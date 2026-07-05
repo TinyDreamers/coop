@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-timber-50 text-slate-800 antialiased;
+  /* Prevent iOS text-size auto-adjust and horizontal jitter on rotate. */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Larger, finger-friendly tap targets on touch devices. */
+@media (pointer: coarse) {
+  button,
+  a,
+  input,
+  select {
+    min-height: 44px;
+  }
+}
+
+/* Reusable component classes layered on Tailwind. */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-blueprint-600 text-white hover:bg-blueprint-700 focus:ring-blueprint-400;
+  }
+  .btn-secondary {
+    @apply btn border border-timber-300 bg-white text-timber-800 hover:bg-timber-100 focus:ring-timber-300;
+  }
+  .btn-ghost {
+    @apply btn text-timber-700 hover:bg-timber-100 focus:ring-timber-300;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-400;
+  }
+  .card {
+    @apply rounded-xl border border-timber-200 bg-white shadow-card;
+  }
+  .input {
+    @apply w-full rounded-lg border border-timber-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blueprint-400 focus:outline-none focus:ring-2 focus:ring-blueprint-200;
+  }
+  .label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-timber-600;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold;
+  }
+}
+
+/* Print styles — used by the /print route for browser "Save as PDF". */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .print-break {
+    break-before: page;
+  }
+  .card {
+    box-shadow: none;
+    border-color: #ddd;
+  }
+}
+
+/* Hide scrollbars on horizontal chip rows while keeping scroll. */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
