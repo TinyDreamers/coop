@@ -32,12 +32,15 @@ export interface PriceProvider {
   lookup(searchTerm: string): Promise<PriceLookupResult>;
 }
 
-/** Small timeout wrapper so a hung request can never freeze the route. */
-async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+/**
+ * Fetch with a hard timeout that actually cancels the request. The abort signal
+ * is wired into fetch (constructed inside so it can never hang past `ms`).
+ */
+async function fetchWithTimeout(url: string, init: RequestInit, ms: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
-    return await p;
+    return await fetch(url, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }
@@ -62,13 +65,14 @@ export const liveHomeDepotProvider: PriceProvider = {
       // Best-effort: hit Home Depot's public typeahead as a sanity check. We do
       // NOT depend on this succeeding — any error degrades to manual/cached.
       const url = `https://www.homedepot.com/federation-gateway/graphql?opname=typeahead`;
-      const res = await withTimeout(
-        fetch(url, {
+      const res = await fetchWithTimeout(
+        url,
+        {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'user-agent': 'coop-planner' },
           body: JSON.stringify({ searchTerm }),
           cache: 'no-store',
-        }),
+        },
         4000,
       );
       if (!res.ok) throw new Error(`status ${res.status}`);

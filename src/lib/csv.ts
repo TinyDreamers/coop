@@ -9,6 +9,16 @@ import { inchesToFtIn } from './format';
  * overrides and owned inventory back onto the persisted project document.
  */
 
+/**
+ * Neutralize spreadsheet formula injection: a cell starting with = + - @ (or a
+ * control char) is prefixed with a single quote so Excel/Sheets treat it as text
+ * instead of executing it. Applied to all user-entered free-text before export.
+ */
+function csvSafe<T>(v: T): T | string {
+  if (typeof v !== 'string') return v;
+  return /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+}
+
 function download(filename: string, text: string) {
   const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -27,16 +37,16 @@ export function exportMaterialsCsv(computed: ComputedProject) {
   const rows = computed.materials.map((m) => ({
     id: m.id,
     category: catLabel(m.category),
-    name: m.name,
-    spec: m.spec,
+    name: csvSafe(m.name),
+    spec: csvSafe(m.spec),
     unit: m.unit,
     quantity: m.qty,
     unit_price: m.unitPrice,
     line_total: m.lineTotal,
     price_source: m.priceSource,
     status: m.status,
-    home_depot_sku: m.homeDepotSku ?? '',
-    search_term: m.searchTerm,
+    home_depot_sku: csvSafe(m.homeDepotSku ?? ''),
+    search_term: csvSafe(m.searchTerm),
     phase: m.phase,
   }));
   download('coop-materials.csv', Papa.unparse(rows));
@@ -48,14 +58,14 @@ export function exportShoppingCsv(computed: ComputedProject) {
     .sort((a, b) => a.category.localeCompare(b.category))
     .map((m) => ({
       category: catLabel(m.category),
-      item: m.name,
+      item: csvSafe(m.name),
       quantity: m.qty,
       unit: m.unit,
       unit_price: m.unitPrice,
       line_total: m.lineTotal,
       price_source: m.priceSource,
-      home_depot_sku: m.homeDepotSku ?? '',
-      search_term: m.searchTerm,
+      home_depot_sku: csvSafe(m.homeDepotSku ?? ''),
+      search_term: csvSafe(m.searchTerm),
     }));
   download('coop-shopping-list.csv', Papa.unparse(rows));
 }
@@ -63,12 +73,12 @@ export function exportShoppingCsv(computed: ComputedProject) {
 export function exportCutListCsv(computed: ComputedProject) {
   const rows = computed.cutList.map((c) => ({
     phase: c.phase,
-    part: c.part,
-    stock: c.stock,
+    part: csvSafe(c.part),
+    stock: csvSafe(c.stock),
     length: inchesToFtIn(c.lengthIn),
     length_inches: c.lengthIn,
     quantity: c.quantity,
-    angle_note: c.angleNote ?? '',
+    angle_note: csvSafe(c.angleNote ?? ''),
   }));
   download('coop-cut-list.csv', Papa.unparse(rows));
 }
@@ -76,12 +86,12 @@ export function exportCutListCsv(computed: ComputedProject) {
 export function exportOwnedCsv(project: CoopProject) {
   const rows = project.ownedMaterials.map((o) => ({
     id: o.id,
-    name: o.name,
+    name: csvSafe(o.name),
     quantity: o.quantity,
-    unit: o.unit,
+    unit: csvSafe(o.unit),
     matches_material_id: o.matchesMaterialId ?? '',
     estimated_value: o.estimatedValue ?? '',
-    note: o.note ?? '',
+    note: csvSafe(o.note ?? ''),
   }));
   download('coop-owned-materials.csv', Papa.unparse(rows));
 }

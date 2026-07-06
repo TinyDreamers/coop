@@ -7,6 +7,7 @@ import type {
   PriceSource,
 } from '../types';
 import { SEED_PRICES, SIDING_OPTIONS, HARDWARE_CLOTH_ROLL } from '../constants';
+import { pickLumber, type LumberNominal } from './lumber';
 import type { Geometry } from './geometry';
 
 /**
@@ -23,7 +24,8 @@ import type { Geometry } from './geometry';
 // A line before pricing/overrides are applied.
 interface RawItem {
   id: string;
-  priceKey: keyof typeof SEED_PRICES; // where the default price + search term come from
+  /** Seed price/search-term key. Omitted for dynamically-priced lumber. */
+  priceKey?: keyof typeof SEED_PRICES;
   category: MaterialCategory;
   name: string;
   spec: string;
@@ -37,6 +39,29 @@ interface RawItem {
   notes?: string;
   /** Override the seed price to 0 (owner supplied). */
   freePrice?: boolean;
+  /** Explicit default price/search term (used for adaptive lumber, no seed key). */
+  defaultUnitPrice?: number;
+  defaultSearchTerm?: string;
+}
+
+/**
+ * Build a dynamically-priced lumber RawItem sized to a required length. Handles
+ * splicing: a member longer than a single board becomes N spliced pieces, so the
+ * purchase quantity multiplies by the piece count.
+ */
+function lumberItem(
+  base: Omit<RawItem, 'priceKey' | 'defaultUnitPrice' | 'defaultSearchTerm' | 'baseQty'>,
+  nominal: LumberNominal,
+  requiredFt: number,
+  memberCount: number,
+): RawItem {
+  const s = pickLumber(nominal, requiredFt);
+  return {
+    ...base,
+    baseQty: memberCount * s.pieces,
+    defaultUnitPrice: s.price,
+    defaultSearchTerm: s.searchTerm,
+  };
 }
 
 /** Map a roof material + panel length to the seed price key. */
@@ -95,17 +120,21 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
 
   // ----- Foundation (phase 2) -----------------------------------------
   const coopSkidCount = 3; // front / middle / back skids run the coop width
+  const skid = pickLumber('4x4pt', coop.widthFt);
   push({
     id: 'lumber.skid-4x4-12-pt',
-    priceKey: 'lumber.skid-4x4-12-pt',
     category: 'lumber',
-    name: '4x4 x 12 ft pressure-treated skid',
-    spec: `Ground-contact PT skids carrying the floor frame (${coopSkidCount} runs).`,
+    name: `${skid.label} pressure-treated skid`,
+    spec: `Ground-contact PT skids carrying the floor frame (${coopSkidCount} runs${
+      skid.pieces > 1 ? `, ${skid.pieces} spliced pieces each` : ''
+    }).`,
     unit: 'each',
-    baseQty: coopSkidCount,
+    baseQty: coopSkidCount * skid.pieces,
     wasteFactor: 0,
     phase: 2,
     securityCritical: false,
+    defaultUnitPrice: skid.price,
+    defaultSearchTerm: skid.searchTerm,
   });
   const coopDeckBlocks = coopSkidCount * 3; // 3 support points per skid
   const runDeckBlocks = Math.ceil(geo.runWallPerimeterFt / 6);
@@ -124,27 +153,35 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
   // ----- Raised coop floor frame (phase 3) ----------------------------
   // Joists span the shorter (depth) dimension, spaced along the width.
   const joistCount = Math.ceil((coop.widthFt * 12) / coop.joistSpacingIn) + 1;
+  const joist = pickLumber('2x8', coop.depthFt);
   push({
     id: 'lumber.joist-2x8-8',
-    priceKey: 'lumber.joist-2x8-8',
     category: 'lumber',
-    name: `2x8 x 8 ft floor joist`,
-    spec: `Joists @ ${coop.joistSpacingIn}" OC spanning the ${coop.depthFt} ft depth.`,
+    name: `${joist.label} floor joist`,
+    spec: `Joists @ ${coop.joistSpacingIn}" OC spanning the ${coop.depthFt} ft depth${
+      joist.pieces > 1 ? ` (${joist.pieces} spliced pieces each, over a mid-beam)` : ''
+    }.`,
     unit: 'each',
-    baseQty: joistCount,
+    baseQty: joistCount * joist.pieces,
     wasteFactor: waste,
     phase: 3,
+    defaultUnitPrice: joist.price,
+    defaultSearchTerm: joist.searchTerm,
   });
+  const rim = pickLumber('2x8', coop.widthFt);
   push({
     id: 'lumber.rim-2x8-12',
-    priceKey: 'lumber.rim-2x8-12',
     category: 'lumber',
-    name: '2x8 x 12 ft rim / band joist',
-    spec: 'Caps the joist ends along the coop width (front & back band).',
+    name: `${rim.label} rim / band joist`,
+    spec: `Caps the joist ends along the coop width (front & back band)${
+      rim.pieces > 1 ? `, spliced over a joist` : ''
+    }.`,
     unit: 'each',
-    baseQty: 2,
+    baseQty: 2 * rim.pieces,
     wasteFactor: waste,
     phase: 3,
+    defaultUnitPrice: rim.price,
+    defaultSearchTerm: rim.searchTerm,
   });
   push({
     id: 'fasten.joist-hangers',
@@ -201,28 +238,34 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
   // Perimeter studs @ spacing + extra for corners, openings, blocking.
   const studBase = Math.ceil((geo.coopWallPerimeterFt * 12) / coop.studSpacingIn);
   const studExtra = 12; // corners, king/jack studs at door + window, blocking
+  // Studs are bought to the tallest wall (front); shorter walls are cut down.
+  const studStock = pickLumber('2x4', Math.max(coop.frontWallHeightFt, coop.backWallHeightFt));
   push({
     id: 'lumber.stud-2x4-8',
-    priceKey: 'lumber.stud-2x4-8',
     category: 'lumber',
-    name: '2x4 x 8 ft wall stud',
-    spec: `Wall studs @ ${coop.studSpacingIn}" OC. 8 ft covers both wall heights (cut the short wall down).`,
+    name: `${studStock.label} wall stud`,
+    spec: `Wall studs @ ${coop.studSpacingIn}" OC, sized to the ${coop.frontWallHeightFt} ft front wall (cut the short wall down).`,
     unit: 'each',
     baseQty: studBase + studExtra,
     wasteFactor: waste,
     phase: 5,
+    defaultUnitPrice: studStock.price,
+    defaultSearchTerm: studStock.searchTerm,
   });
   const plateLf = geo.coopWallPerimeterFt * 2; // top + bottom plate
+  // Plates run the wall length and splice over studs; buy the longest handy board.
+  const plateStock = pickLumber('2x4', Math.min(16, Math.max(coop.widthFt, coop.depthFt)));
   push({
     id: 'lumber.plate-2x4-12',
-    priceKey: 'lumber.plate-2x4-12',
     category: 'lumber',
-    name: '2x4 x 12 ft top/bottom plate',
-    spec: 'Top and bottom wall plates around the coop.',
+    name: `${plateStock.label} top/bottom plate`,
+    spec: 'Top and bottom wall plates around the coop (spliced over studs as needed).',
     unit: 'each',
-    baseQty: Math.ceil(plateLf / 12),
+    baseQty: Math.ceil(plateLf / plateStock.lengthFt),
     wasteFactor: waste,
     phase: 5,
+    defaultUnitPrice: plateStock.price,
+    defaultSearchTerm: plateStock.searchTerm,
   });
 
   // ----- Coop siding (phase 6) ----------------------------------------
@@ -280,16 +323,18 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
 
   // ----- Coop roof framing (phase 7) ----------------------------------
   const coopRafterCount = Math.ceil((coop.widthFt * 12) / coop.rafterSpacingIn) + 1;
+  const coopRafter = pickLumber('2x6', geo.coopRoofSlopeLengthFt);
   push({
     id: 'lumber.rafter-2x6-10',
-    priceKey: 'lumber.rafter-2x6-10',
     category: 'lumber',
-    name: '2x6 x 10 ft rafter',
-    spec: `Shed rafters @ ${coop.rafterSpacingIn}" OC (front to back), incl. overhang.`,
+    name: `${coopRafter.label} rafter`,
+    spec: `Shed rafters @ ${coop.rafterSpacingIn}" OC over the ~${geo.coopRoofSlopeLengthFt.toFixed(1)} ft slope (incl. overhang).`,
     unit: 'each',
-    baseQty: coopRafterCount,
+    baseQty: coopRafterCount * coopRafter.pieces,
     wasteFactor: waste,
     phase: 7,
+    defaultUnitPrice: coopRafter.price,
+    defaultSearchTerm: coopRafter.searchTerm,
   });
   const coopPurlinRows = Math.max(2, Math.ceil(geo.coopRoofSlopeLengthFt / 2));
   const coopPurlinBoards = Math.ceil((coopPurlinRows * (coop.widthFt + 2 * coop.roofOverhangFt)) / 12);
@@ -463,20 +508,21 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
   // ----- Roosts (phase 11) --------------------------------------------
   const roostFt = Math.ceil((options.chickens * 10) / 12); // 10" per bird
   // Each roost bar spans the coop width; count how many full-width bars give the
-  // needed linear feet. Bars come from 12 ft stock (a full-width roost won't fit
-  // an 8 ft board on a wide coop).
+  // needed linear feet, and buy stock sized to the bar length.
   const roostBarLenFt = Math.max(2, coop.widthFt - 0.7);
   const roostBoards = Math.max(2, Math.ceil(roostFt / roostBarLenFt));
+  const roostStock = pickLumber('2x4', roostBarLenFt);
   push({
     id: 'lumber.roost-2x4-12',
-    priceKey: 'lumber.roost-2x4-12',
     category: 'lumber',
-    name: '2x4 x 12 ft roost (flat side up)',
+    name: `${roostStock.label} roost (flat side up)`,
     spec: `${roostBoards} full-width bars = ~${roostFt} linear ft so large birds cover their toes in winter.`,
     unit: 'each',
-    baseQty: roostBoards,
+    baseQty: roostBoards * roostStock.pieces,
     wasteFactor: 0,
     phase: 11,
+    defaultUnitPrice: roostStock.price,
+    defaultSearchTerm: roostStock.searchTerm,
   });
   push({
     id: 'misc.roost-brackets',
@@ -513,43 +559,52 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
     Math.ceil((geo.runWallPerimeterFt - geo.runSharedWallFt - runDoorFt) / run.panelWidthFt),
   );
   const perPanelLf = 2 * geo.runAvgWallHeightFt + 3 * run.panelWidthFt; // 2 verticals + 3 rails
-  const runFrameBoards = Math.ceil((runPanels * perPanelLf) / 8);
+  // Framing boards must be at least as long as the tall-side vertical.
+  const runFrameStock = pickLumber('2x4', run.highWallHeightFt);
+  const runFrameBoards = Math.ceil((runPanels * perPanelLf) / runFrameStock.lengthFt);
   push({
     id: 'lumber.run-frame-2x4-8',
-    priceKey: 'lumber.run-frame-2x4-8',
     category: 'lumber',
-    name: '2x4 x 8 ft run panel framing',
+    name: `${runFrameStock.label} run panel framing`,
     spec: `${runPanels} modular ${run.panelWidthFt} ft wall panels that unscrew to move.`,
     unit: 'each',
     baseQty: runFrameBoards,
     wasteFactor: waste,
     phase: 13,
+    defaultUnitPrice: runFrameStock.price,
+    defaultSearchTerm: runFrameStock.searchTerm,
   });
   const runPosts = Math.ceil(geo.runWallPerimeterFt / 8) + 4;
+  const runPostStock = pickLumber('4x4pt', run.highWallHeightFt);
   push({
     id: 'lumber.run-post-4x4-8-pt',
-    priceKey: 'lumber.run-post-4x4-8-pt',
     category: 'lumber',
-    name: '4x4 x 8 ft PT run post / sill',
+    name: `${runPostStock.label} run post / sill`,
     spec: 'Ground-contact corner posts + perimeter sill on deck blocks (no post holes).',
     unit: 'each',
     baseQty: runPosts,
     wasteFactor: 0,
     phase: 13,
+    defaultUnitPrice: runPostStock.price,
+    defaultSearchTerm: runPostStock.searchTerm,
   });
 
   // ----- Run roof framing (phase 14) ----------------------------------
   const runRafterCount = Math.ceil((run.lengthFt * 12) / run.rafterSpacingIn) + 1;
+  const runRafter = pickLumber('2x6', geo.runRoofSlopeLengthFt);
   push({
     id: 'lumber.run-rafter-2x6-16',
-    priceKey: 'lumber.run-rafter-2x6-16',
     category: 'lumber',
-    name: '2x6 x 16 ft run rafter',
-    spec: `Rafters @ ${run.rafterSpacingIn}" OC spanning the ~${geo.runRoofSlopeLengthFt.toFixed(1)} ft slope in one piece (carried mid-span on the center beam). 16 ft stock — a 12 ft board is too short.`,
+    name: `${runRafter.label} run rafter`,
+    spec: `Rafters @ ${run.rafterSpacingIn}" OC spanning the ~${geo.runRoofSlopeLengthFt.toFixed(1)} ft slope${
+      runRafter.pieces > 1 ? ` (${runRafter.pieces} spliced pieces, over the beam)` : ' in one piece (carried mid-span on the center beam)'
+    }.`,
     unit: 'each',
-    baseQty: runRafterCount,
+    baseQty: runRafterCount * runRafter.pieces,
     wasteFactor: waste,
     phase: 14,
+    defaultUnitPrice: runRafter.price,
+    defaultSearchTerm: runRafter.searchTerm,
   });
   push({
     id: 'lumber.run-beam-2x8-12',
@@ -563,16 +618,18 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
     phase: 14,
     securityCritical: false,
   });
+  const beamPostStock = pickLumber('4x4pt', geo.runAvgWallHeightFt);
   push({
     id: 'lumber.run-beampost-4x4-8-pt',
-    priceKey: 'lumber.run-post-4x4-8-pt',
     category: 'lumber',
-    name: '4x4 x 8 ft beam post',
+    name: `${beamPostStock.label} beam post`,
     spec: 'Interior posts carrying the center beam, set on deck blocks.',
     unit: 'each',
     baseQty: Math.max(2, Math.ceil(run.lengthFt / 8)),
     wasteFactor: 0,
     phase: 14,
+    defaultUnitPrice: beamPostStock.price,
+    defaultSearchTerm: beamPostStock.searchTerm,
   });
   const runPurlinRows = Math.max(2, Math.ceil(geo.runRoofSlopeLengthFt / 2.5));
   const runPurlinBoards = Math.ceil((runPurlinRows * run.lengthFt) / 8);
@@ -845,10 +902,11 @@ export function resolveItems(project: CoopProject, raw: RawItem[]): MaterialItem
     const override = materialOverrides[r.id];
     const locked = lockedProducts[r.id];
     const priceOverride = priceOverrides[r.id];
-    const seed = SEED_PRICES[r.priceKey];
+    const seed = r.priceKey ? SEED_PRICES[r.priceKey] : undefined;
 
-    // Resolve unit price + provenance.
-    let unitPrice = seed?.unitPrice ?? 0;
+    // Resolve unit price + provenance. Adaptive lumber carries its own default
+    // price (defaultUnitPrice); everything else reads the cached seed price.
+    let unitPrice = r.defaultUnitPrice ?? seed?.unitPrice ?? 0;
     let priceSource: PriceSource = 'default';
     if (r.freePrice) {
       unitPrice = 0;
@@ -881,7 +939,7 @@ export function resolveItems(project: CoopProject, raw: RawItem[]): MaterialItem
       status = 'owned';
     }
 
-    const searchTerm = override?.searchTerm ?? locked?.name ?? seed?.searchTerm ?? r.name;
+    const searchTerm = override?.searchTerm ?? locked?.name ?? r.defaultSearchTerm ?? seed?.searchTerm ?? r.name;
 
     const countsTowardBudget = status === 'need';
     const lineTotal = countsTowardBudget ? round(qty * unitPrice) : 0;

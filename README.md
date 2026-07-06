@@ -26,7 +26,7 @@ model**.
   steps/mistakes/safety, **siding & nesting-box comparison** screens.
 - **Owned inventory** (pre-loaded with your vinyl plank flooring), **photo uploads**, **PDF + CSV
   export**, and **JSON backup/restore**.
-- **Simple password gate** (no accounts). Default password: `coop`.
+- **Simple password gate** (no accounts). Default password: `coop`. The gate cookie is a signed HMAC of `AUTH_SECRET` (set a random value in production so it can't be forged).
 
 ---
 

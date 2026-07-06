@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
+import { AUTH_COOKIE, authToken } from '@/lib/auth';
 
 /**
  * Password gate endpoint. No accounts — one shared password (default "coop",
- * override with APP_PASSWORD). On success we set an httpOnly cookie the
- * middleware checks. DELETE logs out.
+ * override with APP_PASSWORD). On success we set a SIGNED httpOnly cookie
+ * (HMAC of a server secret) that the middleware verifies. DELETE logs out.
  */
-const AUTH_COOKIE = 'coop_auth';
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 
 export async function POST(req: Request) {
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   }
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(AUTH_COOKIE, 'ok', {
+  res.cookies.set(AUTH_COOKIE, await authToken(), {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',

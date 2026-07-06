@@ -30,8 +30,11 @@ export interface ModelViewProps {
 function useSceneBounds(components: Component3D[]) {
   return useMemo(() => {
     const box = new THREE.Box3();
-    if (components.length === 0) box.set(new THREE.Vector3(-5, 0, -5), new THREE.Vector3(5, 5, 5));
-    for (const c of components) {
+    const finite = components.filter(
+      (c) => c.position.every(Number.isFinite) && c.size.every(Number.isFinite),
+    );
+    if (finite.length === 0) box.set(new THREE.Vector3(-5, 0, -5), new THREE.Vector3(5, 5, 5));
+    for (const c of finite) {
       const half = new THREE.Vector3(c.size[0] / 2, c.size[1] / 2, c.size[2] / 2);
       const pos = new THREE.Vector3(...c.position);
       box.expandByPoint(pos.clone().sub(half));
@@ -70,6 +73,9 @@ function Part({
 
   const isThin = Math.min(...c.size) < 0.12;
   const opacity = selected ? 1 : c.opacity ?? 1;
+
+  // Never feed NaN geometry to three.js (e.g. from a cleared dimension field).
+  if (![...pos.toArray(), ...c.size].every(Number.isFinite)) return null;
 
   return (
     <mesh

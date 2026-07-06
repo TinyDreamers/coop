@@ -129,7 +129,8 @@ export function computeComponents(
   // Side walls run along z; height interpolates with the slope.
   for (let z = 0; z <= cD + 0.001; z += studStep) {
     const pz = Math.min(z, cD);
-    const h = coop.backWallHeightFt + (coop.frontWallHeightFt - coop.backWallHeightFt) * (pz / cD);
+    // Guard against cD=0 (cleared depth field) -> 0/0 = NaN geometry.
+    const h = coop.backWallHeightFt + (coop.frontWallHeightFt - coop.backWallHeightFt) * (cD > 0 ? pz / cD : 0);
     for (const x of [0, cW]) {
       add('Side wall stud (stepped)', 'coop-framing', 'framing', 'coop', [x, FLOOR_TOP + h / 2, pz], [0.3, h, 0.13], COLORS.lumber, 'lumber.stud-2x4-8', {
         cutInstructions: 'Steps shorter toward the back; top cut to pitch.',
@@ -195,7 +196,7 @@ export function computeComponents(
   const highX = 0; // high wall
   const runSlope = Math.atan2(run.highWallHeightFt - run.wallHeightFt, rW);
   const heightAtX = (x: number) =>
-    run.highWallHeightFt + (run.wallHeightFt - run.highWallHeightFt) * (x / rW);
+    run.highWallHeightFt + (run.wallHeightFt - run.highWallHeightFt) * (rW > 0 ? x / rW : 0);
 
   // Run posts around the perimeter (skip the shared wall at z0).
   const postStep = run.panelWidthFt;

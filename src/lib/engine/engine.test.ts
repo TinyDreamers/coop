@@ -164,17 +164,30 @@ describe('cut list', () => {
     }
   });
 
-  it('holds the invariant across the supported design envelope', () => {
-    // The BOM uses standard stock sizes tuned for the recommended footprint
-    // (coop <= 12 ft wide / 8 ft deep, run 12 ft wide). Longer runs only change
-    // COUNTS, not member lengths, so the cut list stays buildable.
-    const p = project((pp) => {
-      pp.run.lengthFt = 32; // longer run: more panels/posts, same member lengths
-    });
-    const c = computeProject(p);
-    for (const cut of c.cutList) {
-      const stockIn = parseFloat(cut.stock.match(/(\d+(?:\.\d+)?)\s*ft/)![1]) * 12;
-      expect(cut.lengthIn, `${cut.part} (${cut.stock})`).toBeLessThanOrEqual(stockIn + 0.5);
+  it('holds the invariant at the extremes of every slider (adaptive stock)', () => {
+    // Adaptive lumber stock (lumber.ts) must keep every cut buildable across the
+    // full editable range — the largest coop + run the UI allows.
+    const configs = [
+      (pp: CoopProject) => {
+        pp.coop.widthFt = 20;
+        pp.coop.depthFt = 16;
+        pp.coop.frontWallHeightFt = 10;
+        pp.coop.backWallHeightFt = 9;
+        pp.run.widthFt = 20;
+        pp.run.lengthFt = 40;
+        pp.run.highWallHeightFt = 11;
+        pp.run.wallHeightFt = 6.5;
+      },
+      (pp: CoopProject) => {
+        pp.coop.depthFt = 12; // the specific joist/rafter case the review flagged
+      },
+    ];
+    for (const mut of configs) {
+      const c = computeProject(project(mut));
+      for (const cut of c.cutList) {
+        const stockIn = parseFloat(cut.stock.match(/(\d+(?:\.\d+)?)\s*ft/)![1]) * 12;
+        expect(cut.lengthIn, `${cut.part} (${cut.stock})`).toBeLessThanOrEqual(stockIn + 0.5);
+      }
     }
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useProjectStore } from '@/lib/store/useProjectStore';
 import { Card, CardBody, SectionTitle, Badge, Button, Segmented, cn } from '@/components/ui';
 import { money, PRICE_SOURCE_LABEL, PRICE_SOURCE_STYLE } from '@/lib/format';
@@ -90,6 +90,12 @@ function MaterialRow({ item }: { item: MaterialItem }) {
   const { setPriceOverride, setMaterialOverride, lockProduct, unlockProduct } = useProjectStore();
   const [open, setOpen] = useState(false);
   const [priceInput, setPriceInput] = useState(String(item.unitPrice));
+  // Re-sync the manual price field when the resolved price changes externally
+  // (e.g. after locking a SKU or a design change), so a later "Set" won't write
+  // back a stale value.
+  useEffect(() => {
+    setPriceInput(String(item.unitPrice));
+  }, [item.unitPrice]);
   const [live, setLive] = useState<{ loading: boolean; message?: string; url?: string } | null>(null);
   const [skuForm, setSkuForm] = useState<{ sku: string; name: string; price: string } | null>(null);
 

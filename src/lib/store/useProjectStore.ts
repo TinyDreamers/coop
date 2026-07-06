@@ -89,26 +89,70 @@ function loadLocal(): CoopProject | null {
   }
 }
 
-// --- debounced server save -------------------------------------------------
+// --- debounced + serialized server save ------------------------------------
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
-async function serverSave(project: CoopProject, set: (p: Partial<StoreState>) => void) {
-  try {
-    set({ saving: true });
-    const res = await fetch('/api/project', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(project),
-    });
-    const data = await res.json().catch(() => ({}));
-    set({
-      saving: false,
-      lastSavedAt: new Date().toISOString(),
-      storageMode: data?.configured ? 'blob' : 'local',
-    });
-  } catch {
-    // Local copy already written; surface nothing blocking.
-    set({ saving: false, storageMode: 'local' });
-  }
+// Saves are chained so a slow PUT can't complete AFTER a newer one and clobber
+// it on the server (out-of-order write). `latestDraft`/`unsaved` drive the
+// flush-on-unload path so an edit made inside the debounce window isn't lost.
+let saveChain: Promise<void> = Promise.resolve();
+let latestDraft: CoopProject | null = null;
+let unsaved = false;
+let flushRegistered = false;
+
+function serverSave(project: CoopProject, set: (p: Partial<StoreState>) => void): Promise<void> {
+  latestDraft = project;
+  unsaved = true;
+  set({ saving: true });
+  saveChain = saveChain.then(async () => {
+    try {
+      const res = await fetch('/api/project', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(project),
+      });
+      const data = await res.json().catch(() => ({}));
+      // Only the write of the newest draft clears the dirty flag.
+      if (latestDraft === project) unsaved = false;
+      set({
+        saving: latestDraft !== project,
+        lastSavedAt: new Date().toISOString(),
+        storageMode: data?.configured ? 'blob' : 'local',
+      });
+    } catch {
+      // Local copy already written; surface nothing blocking.
+      set({ saving: false, storageMode: 'local' });
+    }
+  });
+  return saveChain;
+}
+
+/** Best-effort flush of any pending edit when the tab is closing/hidden. */
+function registerUnloadFlush() {
+  if (flushRegistered || typeof window === 'undefined') return;
+  flushRegistered = true;
+  const flush = () => {
+    if (!unsaved || !latestDraft) return;
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    // keepalive lets the request outlive the page.
+    try {
+      void fetch('/api/project', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(latestDraft),
+        keepalive: true,
+      });
+      unsaved = false;
+    } catch {
+      /* nothing more we can do on unload */
+    }
+  };
+  window.addEventListener('pagehide', flush);
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flush();
+  });
 }
 
 function recompute(project: CoopProject): ComputedProject | null {
@@ -132,6 +176,9 @@ export const useProjectStore = create<StoreState>((set, get) => {
     const computed = recompute(draft) ?? get().computed;
     set({ project: draft, computed });
     saveLocal(draft);
+    // Mark dirty immediately so an unload inside the debounce window still flushes.
+    latestDraft = draft;
+    unsaved = true;
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => serverSave(draft, set), SAVE_DEBOUNCE_MS);
   }
@@ -148,15 +195,24 @@ export const useProjectStore = create<StoreState>((set, get) => {
     async load() {
       if (get().status === 'loading') return;
       set({ status: 'loading' });
+      registerUnloadFlush();
       const local = loadLocal();
       try {
         const res = await fetch('/api/project', { cache: 'no-store' });
         const data = await res.json();
         if (data.configured) {
-          // Server is source of truth. If empty, seed from local or default.
-          const project = data.project ?? local ?? freshDefaultProject();
-          if (!data.project) {
-            // Persist the seed so subsequent loads are consistent.
+          const server = data.project as CoopProject | null;
+          // Reconcile: if the local copy is newer than the server's (an edit that
+          // never flushed before the last close), adopt local and re-push it.
+          const localNewer =
+            !!server &&
+            !!local &&
+            typeof local.updatedAt === 'string' &&
+            typeof server.updatedAt === 'string' &&
+            local.updatedAt > server.updatedAt;
+          const project = localNewer ? local! : server ?? local ?? freshDefaultProject();
+          if (!server || localNewer) {
+            // Persist the adopted copy (seed, or the newer local edit).
             void serverSave(project, set);
           }
           set({
