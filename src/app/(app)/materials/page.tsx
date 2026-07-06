@@ -6,7 +6,12 @@ import { Card, CardBody, SectionTitle, Badge, Button, Segmented, cn } from '@/co
 import { money, PRICE_SOURCE_LABEL, PRICE_SOURCE_STYLE } from '@/lib/format';
 import { MATERIAL_CATEGORIES } from '@/lib/types';
 import type { ItemStatus, MaterialItem } from '@/lib/types';
-import { homeDepotSearchUrl } from '@/lib/pricing/provider';
+import {
+  homeDepotSearchUrl,
+  homeDepotItemUrl,
+  extractHomeDepotItemId,
+  hasLockedProduct,
+} from '@/lib/pricing/provider';
 import {
   ChevronDown,
   ExternalLink,
@@ -15,6 +20,7 @@ import {
   RefreshCw,
   ShieldAlert,
   Search,
+  Store,
 } from 'lucide-react';
 
 const STATUS_OPTIONS: { value: ItemStatus; label: string }[] = [
@@ -97,7 +103,8 @@ function MaterialRow({ item }: { item: MaterialItem }) {
     setPriceInput(String(item.unitPrice));
   }, [item.unitPrice]);
   const [live, setLive] = useState<{ loading: boolean; message?: string; url?: string } | null>(null);
-  const [skuForm, setSkuForm] = useState<{ sku: string; name: string; price: string } | null>(null);
+  const [skuForm, setSkuForm] = useState<{ sku: string; name: string; price: string; url: string } | null>(null);
+  const locked = hasLockedProduct(item);
 
   const dimmed = item.status === 'excluded' || item.status === 'owned';
 
@@ -132,9 +139,12 @@ function MaterialRow({ item }: { item: MaterialItem }) {
                 </Badge>
               )}
               {item.ownerSupplied && <Badge className="bg-moss-100 text-moss-700">owned</Badge>}
-              {item.homeDepotSku && (
+              {locked && (
                 <Badge className="bg-blueprint-50 text-blueprint-700">
-                  <Lock size={11} /> SKU {item.homeDepotSku}
+                  <Lock size={11} />{' '}
+                  {item.homeDepotSku && item.homeDepotSku.toLowerCase() !== 'n/a'
+                    ? `SKU ${item.homeDepotSku}`
+                    : 'Product locked'}
                 </Badge>
               )}
             </div>
@@ -185,55 +195,83 @@ function MaterialRow({ item }: { item: MaterialItem }) {
                 </div>
               </div>
               <div>
-                <div className="label">Home Depot search</div>
+                <div className="label">Home Depot search term</div>
                 <div className="flex gap-2">
                   <input
                     className="input"
                     value={item.searchTerm}
                     onChange={(e) => setMaterialOverride(item.id, { searchTerm: e.target.value })}
                   />
-                  <a className="btn-secondary" href={homeDepotSearchUrl(item.searchTerm)} target="_blank" rel="noreferrer" title="Open on homedepot.com">
-                    <ExternalLink size={15} />
+                  <a className="btn-secondary" href={homeDepotSearchUrl(item.searchTerm)} target="_blank" rel="noreferrer" title="Search homedepot.com">
+                    <Search size={15} />
                   </a>
                 </div>
               </div>
             </div>
 
-            {/* Live price check */}
-            <div>
+            {/* Open on Home Depot — the exact product when one is locked, else a search */}
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                className={cn(locked ? 'btn-primary' : 'btn-secondary')}
+                href={homeDepotItemUrl(item)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Store size={15} /> {locked ? 'View this product on Home Depot' : 'Find on Home Depot'}
+                <ExternalLink size={13} className="opacity-70" />
+              </a>
               <Button variant="ghost" onClick={checkLive} disabled={live?.loading}>
                 <Search size={15} /> {live?.loading ? 'Checking…' : 'Check live price'}
               </Button>
-              {live?.message && (
-                <p className="mt-1 text-xs text-amber-700">
-                  {live.message}{' '}
-                  {live.url && (
-                    <a className="font-semibold text-blueprint-600 underline" href={live.url} target="_blank" rel="noreferrer">
-                      open search
-                    </a>
-                  )}
-                </p>
-              )}
             </div>
+            {live?.message && (
+              <p className="text-xs text-amber-700">
+                {live.message}{' '}
+                {live.url && (
+                  <a className="font-semibold text-blueprint-600 underline" href={live.url} target="_blank" rel="noreferrer">
+                    open search
+                  </a>
+                )}
+              </p>
+            )}
 
-            {/* SKU lock */}
+            {/* Lock a specific Home Depot product (SKU / internet # + optional URL) */}
             <div>
-              {item.homeDepotSku ? (
+              {locked ? (
                 <Button variant="ghost" onClick={() => unlockProduct(item.id)}>
-                  <Unlock size={15} /> Unlock SKU {item.homeDepotSku}
+                  <Unlock size={15} /> Unlock{' '}
+                  {item.homeDepotSku && item.homeDepotSku.toLowerCase() !== 'n/a'
+                    ? `SKU ${item.homeDepotSku}`
+                    : 'this product'}
                 </Button>
               ) : skuForm ? (
                 <div className="grid gap-2 sm:grid-cols-4">
-                  <input className="input" placeholder="SKU / model #" value={skuForm.sku} onChange={(e) => setSkuForm({ ...skuForm, sku: e.target.value })} />
+                  <input className="input" placeholder="SKU / internet #" value={skuForm.sku} onChange={(e) => setSkuForm({ ...skuForm, sku: e.target.value })} />
                   <input className="input sm:col-span-2" placeholder="Product name" value={skuForm.name} onChange={(e) => setSkuForm({ ...skuForm, name: e.target.value })} />
                   <input className="input" placeholder="Price" inputMode="decimal" value={skuForm.price} onChange={(e) => setSkuForm({ ...skuForm, price: e.target.value })} />
+                  <input
+                    className="input sm:col-span-4"
+                    placeholder="Paste the homedepot.com product URL (optional)"
+                    value={skuForm.url}
+                    onChange={(e) => {
+                      const url = e.target.value;
+                      const id = extractHomeDepotItemId(url);
+                      // Auto-fill the SKU from a pasted product URL when it's blank.
+                      setSkuForm((f) => (f ? { ...f, url, sku: f.sku || id || '' } : f));
+                    }}
+                  />
+                  <p className="text-xs text-timber-500 sm:col-span-4">
+                    Tip: open the item on homedepot.com and paste its link — we’ll pull the item # and
+                    deep-link straight to that product everywhere in the app.
+                  </p>
                   <div className="sm:col-span-4 flex gap-2">
                     <Button
                       variant="primary"
                       onClick={() => {
                         lockProduct(item.id, {
-                          sku: skuForm.sku || 'n/a',
-                          name: skuForm.name || item.name,
+                          sku: skuForm.sku.trim() || 'n/a',
+                          name: skuForm.name.trim() || item.name,
+                          url: skuForm.url.trim() || undefined,
                           unitPrice: parseFloat(skuForm.price) || item.unitPrice,
                           priceSource: 'cached',
                           lockedAt: new Date().toISOString(),
@@ -247,7 +285,7 @@ function MaterialRow({ item }: { item: MaterialItem }) {
                   </div>
                 </div>
               ) : (
-                <Button variant="ghost" onClick={() => setSkuForm({ sku: '', name: item.name, price: String(item.unitPrice) })}>
+                <Button variant="ghost" onClick={() => setSkuForm({ sku: '', name: item.name, price: String(item.unitPrice), url: '' })}>
                   <Lock size={15} /> Lock a specific product / SKU
                 </Button>
               )}

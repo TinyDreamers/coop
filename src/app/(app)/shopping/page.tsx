@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { useProjectStore } from '@/lib/store/useProjectStore';
-import { Card, CardBody, SectionTitle, Stat, Badge, Button, Toggle, EmptyState, cn } from '@/components/ui';
+import { Card, CardBody, SectionTitle, Stat, Badge, Button, Toggle, ProgressBar, EmptyState, cn } from '@/components/ui';
 import { money, num, pluralize, PRICE_SOURCE_LABEL, PRICE_SOURCE_STYLE } from '@/lib/format';
 import { MATERIAL_CATEGORIES } from '@/lib/types';
 import type { MaterialItem } from '@/lib/types';
-import { homeDepotSearchUrl } from '@/lib/pricing/provider';
+import { homeDepotItemUrl, hasLockedProduct } from '@/lib/pricing/provider';
 import { exportShoppingCsv } from '@/lib/csv';
-import { ShoppingCart, ExternalLink, Lock, Download, Check, ListChecks } from 'lucide-react';
+import { ShoppingCart, ExternalLink, Lock, Store, Download, Check, ListChecks } from 'lucide-react';
 
 /**
  * SHOPPING MODE
@@ -118,6 +118,33 @@ export default function ShoppingPage() {
               tone={checkedCount === needItems.length ? 'good' : 'default'}
             />
           </div>
+
+          {/* In-cart progress + store pricing context */}
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-timber-500">
+                {num(checkedCount)} of {num(needItems.length)} in cart
+              </span>
+              {checkedCount > 0 && (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-blueprint-600 hover:underline"
+                  onClick={() => setChecked(new Set())}
+                >
+                  Reset checks
+                </button>
+              )}
+            </div>
+            <ProgressBar
+              value={needItems.length ? (checkedCount / needItems.length) * 100 : 0}
+              tone={checkedCount === needItems.length ? 'moss' : 'blueprint'}
+            />
+            <p className="flex items-start gap-1.5 text-xs text-timber-500">
+              <Store size={13} className="mt-0.5 flex-shrink-0" />
+              Prices are a cached {project.settings.storeArea} snapshot. Tap a product to confirm your
+              store’s live price on homedepot.com — locked items open the exact product page.
+            </p>
+          </div>
         </CardBody>
       </Card>
 
@@ -196,20 +223,24 @@ function ShoppingRow({
       <div className="min-w-0 flex-1">
         <div className={cn('flex flex-wrap items-center gap-2', checked && 'line-through')}>
           <span className="font-semibold text-timber-900">{item.name}</span>
-          {item.homeDepotSku && (
+          {hasLockedProduct(item) && (
             <Badge className="bg-blueprint-50 text-blueprint-700">
-              <Lock size={11} /> SKU {item.homeDepotSku}
+              <Lock size={11} />{' '}
+              {item.homeDepotSku && item.homeDepotSku.toLowerCase() !== 'n/a'
+                ? `SKU ${item.homeDepotSku}`
+                : 'Locked'}
             </Badge>
           )}
         </div>
         {item.spec && <div className="mt-0.5 text-xs text-timber-500">{item.spec}</div>}
         <a
           className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-blueprint-600 hover:underline"
-          href={homeDepotSearchUrl(item.searchTerm)}
+          href={homeDepotItemUrl(item)}
           target="_blank"
           rel="noreferrer"
         >
-          <ExternalLink size={12} /> Search Home Depot
+          {hasLockedProduct(item) ? <Store size={12} /> : <ExternalLink size={12} />}{' '}
+          {hasLockedProduct(item) ? 'View on Home Depot' : 'Find on Home Depot'}
         </a>
       </div>
 
@@ -267,20 +298,24 @@ function OptionalSection({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-timber-900">{item.name}</span>
-                    {item.homeDepotSku && (
+                    {hasLockedProduct(item) && (
                       <Badge className="bg-blueprint-50 text-blueprint-700">
-                        <Lock size={11} /> SKU {item.homeDepotSku}
+                        <Lock size={11} />{' '}
+                        {item.homeDepotSku && item.homeDepotSku.toLowerCase() !== 'n/a'
+                          ? `SKU ${item.homeDepotSku}`
+                          : 'Locked'}
                       </Badge>
                     )}
                   </div>
                   {item.spec && <div className="mt-0.5 text-xs text-timber-500">{item.spec}</div>}
                   <a
                     className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-blueprint-600 hover:underline"
-                    href={homeDepotSearchUrl(item.searchTerm)}
+                    href={homeDepotItemUrl(item)}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <ExternalLink size={12} /> Search Home Depot
+                    {hasLockedProduct(item) ? <Store size={12} /> : <ExternalLink size={12} />}{' '}
+                    {hasLockedProduct(item) ? 'View on Home Depot' : 'Find on Home Depot'}
                   </a>
                 </div>
                 <div className="flex-shrink-0 text-right">

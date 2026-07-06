@@ -31,12 +31,24 @@ export type RoofStyle = 'shed'; // single-slope shed roof (only supported style 
 
 export type RoofMaterial = 'corrugated-pvc' | 'corrugated-polycarbonate' | 'corrugated-metal';
 
+/**
+ * How the ONE continuous roof plane is oriented over the combined coop+run
+ * footprint. Both are single unbroken slopes ("one contiguous roofline"):
+ *  - 'length': slopes down the whole length — high at the coop's tall gable
+ *    wall, low at the far run wall. Long slope, walk-in coop, low far end.
+ *  - 'width': slopes across the width — high along one full-length side, low
+ *    along the other. Short slope, even walk-in height end-to-end, snow sheds
+ *    off one long eave.
+ */
+export type RoofLayout = 'length' | 'width';
+
 /** The walk-in coop enclosure. Dimensions in feet, heights in feet. */
 export interface CoopDesign {
   widthFt: number; // along the front wall (default 12)
-  depthFt: number; // front-to-back, the roof slope run (default 8)
-  frontWallHeightFt: number; // TALL (ridge) wall — high end of the one continuous roof
-  backWallHeightFt: number; // DERIVED: the coop wall at the run seam sits on the plane; stored value unused
+  depthFt: number; // front-to-back (default 8)
+  frontWallHeightFt: number; // TALL (ridge) wall — high edge of the one continuous roof
+  backWallHeightFt: number; // DERIVED: the coop's other wall sits on the plane; stored value unused
+  roofLayout: RoofLayout; // which way the single roof plane slopes
   roofStyle: RoofStyle;
   roofMaterial: RoofMaterial;
   roofOverhangFt: number; // eave/rake overhang, default 1

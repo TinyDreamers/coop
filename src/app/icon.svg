@@ -1,0 +1,51 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Coop Planner">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8f6539"/>
+      <stop offset="1" stop-color="#513728"/>
+    </linearGradient>
+    <linearGradient id="body" x1="120" y1="180" x2="360" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#faf7f2"/>
+      <stop offset="1" stop-color="#e4d5bf"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded app badge -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+  <!-- subtle top highlight -->
+  <rect x="16" y="16" width="480" height="240" rx="112" fill="#ffffff" opacity="0.06"/>
+
+  <!-- Hen, scaled up a touch and lifted for balance -->
+  <g transform="translate(256 306) scale(1.07) translate(-256 -306)">
+    <!-- Legs -->
+    <g stroke="#f5a524" stroke-width="14" stroke-linecap="round">
+      <path d="M244 372 L244 430 M244 430 L224 448 M244 430 L266 448"/>
+      <path d="M292 372 L292 430 M292 430 L272 448 M292 430 L314 448"/>
+    </g>
+
+    <!-- Tail feathers (back / left) -->
+    <path d="M176 316 C110 322 78 262 108 208 C130 232 168 236 182 288 Z" fill="#e4d5bf"/>
+    <path d="M158 300 C104 300 82 250 108 206 C126 226 156 232 168 274 Z" fill="#59a5ff"/>
+
+    <!-- Body -->
+    <ellipse cx="256" cy="300" rx="132" ry="108" fill="url(#body)"/>
+
+    <!-- Wing -->
+    <path d="M214 268 C282 250 336 288 336 306 C316 350 258 356 220 332 C198 318 198 282 214 268 Z" fill="#d2b892"/>
+    <path d="M250 300 C286 296 312 306 330 312" stroke="#bd9663" stroke-width="9" stroke-linecap="round" fill="none"/>
+
+    <!-- Head -->
+    <circle cx="336" cy="212" r="64" fill="url(#body)"/>
+
+    <!-- Comb -->
+    <path d="M300 156 C302 122 328 124 330 150 C334 118 360 122 358 150 C366 122 392 132 384 162 C376 182 312 182 300 156 Z" fill="#e04f3d"/>
+
+    <!-- Beak -->
+    <path d="M392 200 L436 214 L392 230 Z" fill="#f5a524"/>
+    <!-- Wattle -->
+    <path d="M388 230 C402 236 402 262 388 268 C380 258 380 240 388 230 Z" fill="#e04f3d"/>
+
+    <!-- Eye -->
+    <circle cx="352" cy="204" r="10" fill="#3a2a1c"/>
+  </g>
+</svg>

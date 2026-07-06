@@ -13,6 +13,7 @@ const inches = (ft: number) => Math.round(ft * 12);
  */
 export function computeCutList(project: CoopProject, geo: Geometry): CutListItem[] {
   const { coop, run, options } = project;
+  const layout = geo.roofLayout; // 'length' or 'width' — which way the one roof slopes
   const list: CutListItem[] = [];
 
   const add = (i: Omit<CutListItem, 'id'>) =>
@@ -73,7 +74,10 @@ export function computeCutList(project: CoopProject, geo: Geometry): CutListItem
   member({ part: 'Wall plate — sides', nominal: '2x4', finishedFt: coop.depthFt, count: 4, phase: 5, materialId: 'lumber.plate-2x4-12', angleNote: 'Side top plates follow the slope.' });
 
   // --- Coop roof (phase 7-8) ------------------------------------------
-  const coopRafterCount = Math.ceil((coop.widthFt * 12) / coop.rafterSpacingIn) + 1;
+  const coopRafterCount =
+    (layout === 'length'
+      ? Math.ceil((coop.widthFt * 12) / coop.rafterSpacingIn)
+      : Math.ceil((coop.depthFt * 12) / coop.rafterSpacingIn)) + 1;
   member({
     part: 'Shed rafter',
     nominal: '2x6',
@@ -81,13 +85,13 @@ export function computeCutList(project: CoopProject, geo: Geometry): CutListItem
     count: coopRafterCount,
     phase: 7,
     materialId: 'lumber.rafter-2x6-10',
-    angleNote: `Bird's-mouth + plumb cut at ${geo.coopRoofPitchPer12.toFixed(1)}:12 pitch.`,
+    angleNote: `Bird's-mouth + plumb cut at ${geo.roofPitchPer12.toFixed(1)}:12 pitch.`,
   });
   const coopPurlinRows = Math.max(2, Math.ceil(geo.coopRoofSlopeLengthFt / 2));
   member({
     part: 'Roof purlin',
     nominal: '2x4',
-    finishedFt: coop.widthFt + 2 * coop.roofOverhangFt,
+    finishedFt: layout === 'length' ? coop.widthFt + 2 * coop.roofOverhangFt : coop.depthFt,
     count: coopPurlinRows,
     phase: 7,
     materialId: 'lumber.coop-purlin-2x4-12',
@@ -129,7 +133,10 @@ export function computeCutList(project: CoopProject, geo: Geometry): CutListItem
   member({ part: 'Run corner / sill post', nominal: '4x4pt', finishedFt: geo.runHighWallFt, count: 4, phase: 13, materialId: 'lumber.run-post-4x4-8-pt', angleNote: 'Coop-seam corners full height; far corners cut down.' });
 
   // --- Run roof (phase 14) — the run's share of the continuous roof ----
-  const runRafterCount = Math.ceil((geo.roofWidthFt * 12) / run.rafterSpacingIn) + 1;
+  const runRafterCount =
+    (layout === 'length'
+      ? Math.ceil((run.widthFt * 12) / run.rafterSpacingIn)
+      : Math.ceil((run.lengthFt * 12) / run.rafterSpacingIn)) + 1;
   member({
     part: 'Run rafter (down the slope)',
     nominal: '2x6',
@@ -137,18 +144,34 @@ export function computeCutList(project: CoopProject, geo: Geometry): CutListItem
     count: runRafterCount,
     phase: 14,
     materialId: 'lumber.run-rafter-2x6-16',
-    angleNote: 'Runs down the shared slope; jointed over the cross-beams; cut ends to pitch.',
+    angleNote: 'Runs down the shared slope; jointed over the beam; cut ends to pitch.',
   });
-  const runBeamLines = Math.max(0, Math.ceil(run.lengthFt / 8) - 1);
-  add({
-    part: 'Run roof cross-beam (doubled 2x8)',
-    stock: '2x8 x 12 ft',
-    lengthIn: Math.min(144, Math.round(geo.roofWidthFt * 12)),
-    quantity: runBeamLines * Math.ceil(geo.roofWidthFt / 12) * 2,
-    phase: 14,
-    angleNote: 'Laminate two boards; runs across the width; stagger butt joints over a post.',
-    materialId: 'lumber.run-beam-2x8-12',
-  });
+  if (layout === 'length') {
+    // Cross-beams across the width every ~8 ft (omitted when the run needs none).
+    const runBeamLines = Math.max(0, Math.ceil(run.lengthFt / 8) - 1);
+    if (runBeamLines > 0) {
+      member({
+        part: 'Run roof cross-beam (doubled 2x8)',
+        nominal: '2x8',
+        finishedFt: run.widthFt,
+        count: runBeamLines * 2,
+        phase: 14,
+        materialId: 'lumber.run-beam-2x8-12',
+        angleNote: 'Laminate two boards; runs across the width; stagger butt joints over a post.',
+      });
+    }
+  } else {
+    // One center beam down the length carries the width-spanning rafters.
+    member({
+      part: 'Run roof center beam (doubled 2x8)',
+      nominal: '2x8',
+      finishedFt: run.lengthFt,
+      count: 2,
+      phase: 14,
+      materialId: 'lumber.run-beam-2x8-12',
+      angleNote: 'Laminate two boards down the run length; stagger butt joints over a post.',
+    });
+  }
 
   return list;
 }

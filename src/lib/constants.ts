@@ -74,7 +74,7 @@ export const HARDWARE_CLOTH_ROLL: WireRoll = {
   heightFt: 3,
   lengthFt: 25,
   areaSqft: 75,
-  price: 54.98,
+  price: 75.97, // Everbilt 308225EB — refreshed 2026-07-06 from Concord HD (#3485)
 };
 export const HARDWARE_CLOTH_ROLL_LARGE: WireRoll = {
   id: 'hc-half-4x50',

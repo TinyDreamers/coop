@@ -7,6 +7,7 @@ import type {
   PriceSource,
 } from '../types';
 import { SEED_PRICES, SIDING_OPTIONS, HARDWARE_CLOTH_ROLL } from '../constants';
+import { SCRAPED_PRODUCTS } from '../pricing/scrapedProducts';
 import { pickLumber, type LumberNominal } from './lumber';
 import type { Geometry } from './geometry';
 
@@ -114,6 +115,7 @@ const round = (n: number) => Math.round(n * 100) / 100;
 export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
   const { coop, run, options, settings } = project;
   const waste = settings.wasteFactor;
+  const layout = geo.roofLayout; // 'length' or 'width' — which way the one roof slopes
   const items: RawItem[] = [];
 
   const push = (i: RawItem) => items.push(i);
@@ -324,7 +326,13 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
   });
 
   // ----- Coop roof framing (phase 7) ----------------------------------
-  const coopRafterCount = Math.ceil((coop.widthFt * 12) / coop.rafterSpacingIn) + 1;
+  // Rafters run down the slope: spaced across the ridge direction. 'length'
+  // slope → rafters spaced across the coop width; 'width' slope → spaced along
+  // the coop depth. Purlins run the other way (perpendicular to the rafters).
+  const coopRafterCount =
+    (layout === 'length'
+      ? Math.ceil((coop.widthFt * 12) / coop.rafterSpacingIn)
+      : Math.ceil((coop.depthFt * 12) / coop.rafterSpacingIn)) + 1;
   const coopRafter = pickLumber('2x6', geo.coopRoofSlopeLengthFt);
   push({
     id: 'lumber.rafter-2x6-10',
@@ -339,24 +347,28 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
     defaultSearchTerm: coopRafter.searchTerm,
   });
   const coopPurlinRows = Math.max(2, Math.ceil(geo.coopRoofSlopeLengthFt / 2));
-  const coopPurlinBoards = Math.ceil((coopPurlinRows * (coop.widthFt + 2 * coop.roofOverhangFt)) / 12);
+  const coopPurlinLenFt = layout === 'length' ? coop.widthFt + 2 * coop.roofOverhangFt : coop.depthFt;
+  const coopPurlin = pickLumber('2x4', coopPurlinLenFt); // adaptive so stock actually fits the span
   push({
     id: 'lumber.coop-purlin-2x4-12',
-    priceKey: 'lumber.plate-2x4-12',
     category: 'lumber',
-    name: '2x4 x 12 ft roof purlin',
-    spec: 'Horizontal purlins the corrugated panels screw to.',
+    name: `${coopPurlin.label} roof purlin`,
+    spec: `Horizontal purlins the corrugated panels screw to (${coopPurlinRows} rows across the rafters).`,
     unit: 'each',
-    baseQty: coopPurlinBoards,
+    baseQty: coopPurlinRows * coopPurlin.pieces,
     wasteFactor: waste,
     phase: 7,
+    defaultUnitPrice: coopPurlin.price,
+    defaultSearchTerm: coopPurlin.searchTerm,
   });
 
   // ----- Corrugated coop roof (phase 8) -------------------------------
   // Panels are laid in columns across the width, and in courses down the slope
   // (a single panel only reaches ~12 ft, so long slopes take multiple courses).
-  const coopRoofWidthFt = geo.roofWidthFt + 2 * coop.roofOverhangFt;
-  const coopColumns = Math.ceil(coopRoofWidthFt / 2);
+  // Panel columns run along the ridge (the coop's own span in that direction).
+  const coopRidgeSpanFt =
+    (layout === 'length' ? coop.widthFt : coop.depthFt) + 2 * coop.roofOverhangFt;
+  const coopColumns = Math.ceil(coopRidgeSpanFt / 2);
   const coopPlan = planRoofPanels(geo.coopRoofSlopeLengthFt);
   const coopPanelCount = coopColumns * coopPlan.courses;
   push({
@@ -374,10 +386,11 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
   });
 
   // ----- Run roof panels — the run's share of the ONE roof (phase 14) --
-  // Same plane as the coop end: columns run across the shared width; courses lap
-  // down the run's part of the slope.
-  const roofPanelWidthFt = geo.roofWidthFt + 2 * coop.roofOverhangFt;
-  const runColumns = Math.ceil(roofPanelWidthFt / 2);
+  // Same plane as the coop end: columns run along the ridge (the run's own span
+  // in that direction); courses lap down the run's part of the slope.
+  const runRidgeSpanFt =
+    (layout === 'length' ? run.widthFt : run.lengthFt) + 2 * coop.roofOverhangFt;
+  const runColumns = Math.ceil(runRidgeSpanFt / 2);
   const runPlan = planRoofPanels(geo.runRoofSlopeLengthFt);
   const runPanelCount = runColumns * runPlan.courses;
   push({
@@ -594,16 +607,20 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
   });
 
   // ----- Run roof framing (phase 14) ----------------------------------
-  // Rafters run DOWN the shared slope, spaced across the width like the coop's,
-  // spliced and carried over the cross-beams below (the slope is long).
-  const runRafterCount = Math.ceil((geo.roofWidthFt * 12) / run.rafterSpacingIn) + 1;
+  // Rafters run down the shared slope. 'length' → spaced across the run width,
+  // long rafters carried on cross-beams. 'width' → spaced along the run length,
+  // shorter rafters carried on a center beam (a classic lean-to).
+  const runRafterCount =
+    (layout === 'length'
+      ? Math.ceil((run.widthFt * 12) / run.rafterSpacingIn)
+      : Math.ceil((run.lengthFt * 12) / run.rafterSpacingIn)) + 1;
   const runRafter = pickLumber('2x6', geo.runRoofSlopeLengthFt);
   push({
     id: 'lumber.run-rafter-2x6-16',
     category: 'lumber',
     name: `${runRafter.label} run rafter`,
-    spec: `Rafters @ ${run.rafterSpacingIn}" OC across the width, running the run's ~${geo.runRoofSlopeLengthFt.toFixed(1)} ft of the continuous slope${
-      runRafter.pieces > 1 ? ` (${runRafter.pieces} spliced pieces, jointed over the cross-beams)` : ''
+    spec: `Rafters @ ${run.rafterSpacingIn}" OC running the run's ~${geo.runRoofSlopeLengthFt.toFixed(1)} ft of the continuous slope${
+      runRafter.pieces > 1 ? ` (${runRafter.pieces} spliced pieces, jointed over the beam)` : ''
     }.`,
     unit: 'each',
     baseQty: runRafterCount * runRafter.pieces,
@@ -612,37 +629,63 @@ export function buildRawItems(project: CoopProject, geo: Geometry): RawItem[] {
     defaultUnitPrice: runRafter.price,
     defaultSearchTerm: runRafter.searchTerm,
   });
-  // Cross-beams run ACROSS the width every ~8 ft down the run so the long
-  // rafters bear frequently instead of sagging under snow.
-  const runBeamLines = Math.max(0, Math.ceil(run.lengthFt / 8) - 1);
-  const runBeamBoards = runBeamLines * Math.ceil(geo.roofWidthFt / 12) * 2; // doubled 2x8
-  push({
-    id: 'lumber.run-beam-2x8-12',
-    priceKey: 'lumber.run-beam-2x8-12',
-    category: 'lumber',
-    name: '2x8 x 12 ft cross-beam (doubled)',
-    spec: `${runBeamLines} doubled cross-beam line(s) under the run rafters so nothing sags under snow.`,
-    unit: 'each',
-    baseQty: runBeamBoards,
-    wasteFactor: waste,
-    phase: 14,
-    securityCritical: false,
-  });
+  // Beams carry the rafters mid-span; the geometry differs by layout.
   const beamPostStock = pickLumber('4x4pt', geo.runAvgWallHeightFt);
-  push({
-    id: 'lumber.run-beampost-4x4-8-pt',
-    category: 'lumber',
-    name: `${beamPostStock.label} beam post`,
-    spec: 'Interior posts carrying the roof cross-beams, set on deck blocks.',
-    unit: 'each',
-    baseQty: Math.max(2, runBeamLines * 2),
-    wasteFactor: 0,
-    phase: 14,
-    defaultUnitPrice: beamPostStock.price,
-    defaultSearchTerm: beamPostStock.searchTerm,
-  });
+  const runBeamLines = layout === 'length' ? Math.max(0, Math.ceil(run.lengthFt / 8) - 1) : 0;
+  if (layout === 'length' && runBeamLines > 0) {
+    // Cross-beams across the width every ~8 ft so the long rafters don't sag.
+    push({
+      id: 'lumber.run-beam-2x8-12',
+      priceKey: 'lumber.run-beam-2x8-12',
+      category: 'lumber',
+      name: '2x8 x 12 ft cross-beam (doubled)',
+      spec: `${runBeamLines} doubled cross-beam line(s) across the width so the long rafters don't sag under snow.`,
+      unit: 'each',
+      baseQty: runBeamLines * Math.ceil(run.widthFt / 12) * 2,
+      wasteFactor: waste,
+      phase: 14,
+    });
+    push({
+      id: 'lumber.run-beampost-4x4-8-pt',
+      category: 'lumber',
+      name: `${beamPostStock.label} beam post`,
+      spec: 'Interior posts carrying the roof cross-beams, set on deck blocks.',
+      unit: 'each',
+      baseQty: runBeamLines,
+      wasteFactor: 0,
+      phase: 14,
+      defaultUnitPrice: beamPostStock.price,
+      defaultSearchTerm: beamPostStock.searchTerm,
+    });
+  } else if (layout === 'width') {
+    // One center beam down the length carries the width-spanning rafters.
+    push({
+      id: 'lumber.run-beam-2x8-12',
+      priceKey: 'lumber.run-beam-2x8-12',
+      category: 'lumber',
+      name: '2x8 x 12 ft center beam (doubled)',
+      spec: "Doubled 2x8 center beam down the run so the width-spanning rafters don't sag under snow.",
+      unit: 'each',
+      baseQty: Math.ceil(run.lengthFt / 12) * 2,
+      wasteFactor: waste,
+      phase: 14,
+    });
+    push({
+      id: 'lumber.run-beampost-4x4-8-pt',
+      category: 'lumber',
+      name: `${beamPostStock.label} beam post`,
+      spec: 'Interior posts carrying the center beam, set on deck blocks.',
+      unit: 'each',
+      baseQty: Math.max(2, Math.ceil(run.lengthFt / 8)),
+      wasteFactor: 0,
+      phase: 14,
+      defaultUnitPrice: beamPostStock.price,
+      defaultSearchTerm: beamPostStock.searchTerm,
+    });
+  }
   const runPurlinRows = Math.max(2, Math.ceil(geo.runRoofSlopeLengthFt / 2.5));
-  const runPurlinBoards = Math.ceil((runPurlinRows * geo.roofWidthFt) / 8);
+  const runPurlinLenFt = layout === 'length' ? run.widthFt : run.lengthFt;
+  const runPurlinBoards = Math.ceil((runPurlinRows * runPurlinLenFt) / 8);
   push({
     id: 'lumber.run-purlin-2x4-8',
     priceKey: 'lumber.run-frame-2x4-8',
@@ -913,9 +956,13 @@ export function resolveItems(project: CoopProject, raw: RawItem[]): MaterialItem
     const locked = lockedProducts[r.id];
     const priceOverride = priceOverrides[r.id];
     const seed = r.priceKey ? SEED_PRICES[r.priceKey] : undefined;
+    // A product the scraper identified for this line (real Concord-store price +
+    // a deep link to the exact item). Preferred over the older seed snapshot but
+    // still yields to a locked product or a manual override.
+    const scraped = SCRAPED_PRODUCTS[r.id];
 
-    // Resolve unit price + provenance. Adaptive lumber carries its own default
-    // price (defaultUnitPrice); everything else reads the cached seed price.
+    // Resolve unit price + provenance. Precedence: locked > manual override >
+    // scraped snapshot > adaptive-lumber default / seed price.
     let unitPrice = r.defaultUnitPrice ?? seed?.unitPrice ?? 0;
     let priceSource: PriceSource = 'default';
     if (r.freePrice) {
@@ -927,6 +974,9 @@ export function resolveItems(project: CoopProject, raw: RawItem[]): MaterialItem
     } else if (priceOverride) {
       unitPrice = priceOverride.unitPrice;
       priceSource = priceOverride.source;
+    } else if (scraped) {
+      unitPrice = scraped.unitPrice;
+      priceSource = 'cached';
     }
 
     // Deduct owned quantity from the base quantity.
@@ -949,7 +999,11 @@ export function resolveItems(project: CoopProject, raw: RawItem[]): MaterialItem
       status = 'owned';
     }
 
-    const searchTerm = override?.searchTerm ?? locked?.name ?? r.defaultSearchTerm ?? seed?.searchTerm ?? r.name;
+    const searchTerm =
+      override?.searchTerm ?? locked?.name ?? r.defaultSearchTerm ?? seed?.searchTerm ?? r.name;
+    // Deep-link straight to the scraped product when we found one and the user
+    // hasn't locked their own — so "View on Home Depot" opens the exact item.
+    const scrapedForLink = !locked && !r.freePrice ? scraped : undefined;
 
     const countsTowardBudget = status === 'need';
     const lineTotal = countsTowardBudget ? round(qty * unitPrice) : 0;
@@ -968,8 +1022,8 @@ export function resolveItems(project: CoopProject, raw: RawItem[]): MaterialItem
       lineTotal,
       status,
       searchTerm,
-      homeDepotSku: locked?.sku,
-      homeDepotUrl: locked?.url,
+      homeDepotSku: locked?.sku ?? scrapedForLink?.itemId,
+      homeDepotUrl: locked?.url ?? scrapedForLink?.url,
       phase: r.phase,
       ownerSupplied: r.ownerSupplied,
       optional: r.optional,

@@ -24,7 +24,7 @@ describe('geometry', () => {
   it('builds ONE continuous roof plane down the whole length', () => {
     const geo = computeGeometry(project());
     // The slope runs over the full coop depth + run length, not two roofs.
-    expect(geo.roofTotalRunFt).toBe(8 + 24);
+    expect(geo.roofLengthFt).toBe(8 + 24);
     // A single pitch drives the whole roof; the coop/run aliases equal it.
     expect(geo.roofPitchPer12).toBeGreaterThan(0);
     expect(geo.coopRoofPitchPer12).toBe(geo.roofPitchPer12);
@@ -222,6 +222,47 @@ describe('roof panels', () => {
     expect(len).toBeLessThanOrEqual(12);
     // 13 columns * 2 courses = 26 panels for the default run.
     expect(runPanel.qty).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('roof layouts', () => {
+  it('the width layout is a single plane sloping across the width, steeper than down the length', () => {
+    const geo = computeGeometry(project((pp) => (pp.coop.roofLayout = 'width')));
+    expect(geo.roofLayout).toBe('width');
+    expect(geo.roofRunFt).toBe(geo.roofWidthFt); // slope happens across the width
+    expect(geo.roofPitchPer12).toBeGreaterThan(0);
+    // A short (width) slope is steeper than the same rise down the long length.
+    const lengthGeo = computeGeometry(project((pp) => (pp.coop.roofLayout = 'length')));
+    expect(geo.roofPitchPer12).toBeGreaterThan(lengthGeo.roofPitchPer12);
+  });
+
+  it('never lets a wall poke above the roofline (ridge is the max height, both layouts)', () => {
+    for (const l of ['length', 'width'] as const) {
+      const geo = computeGeometry(project((pp) => (pp.coop.roofLayout = l)));
+      // Every derived wall top (coop walls are +1 ft for the raised floor) is at
+      // or below the ridge.
+      for (const top of [geo.coopTallWallFt + 1, geo.coopSeamWallFt + 1, geo.runHighWallFt, geo.runLowWallFt]) {
+        expect(top).toBeLessThanOrEqual(geo.ridgeHeightFt + 1e-9);
+      }
+    }
+  });
+
+  it('caps an inverted design (far wall taller than the ridge) so nothing pokes through', () => {
+    const geo = computeGeometry(project((pp) => {
+      pp.coop.frontWallHeightFt = 6; // ridge would be only 7 ft absolute
+      pp.run.wallHeightFt = 9; // asking for a far wall taller than the ridge
+    }));
+    expect(geo.eaveHeightFt).toBeLessThan(geo.ridgeHeightFt); // capped, not inverted
+    expect(geo.runLowWallFt).toBeLessThanOrEqual(geo.ridgeHeightFt);
+    expect(geo.roofRiseFt).toBeGreaterThanOrEqual(0);
+  });
+
+  it('keeps every cut buildable in the width layout too', () => {
+    const c = computeProject(project((pp) => (pp.coop.roofLayout = 'width')));
+    for (const cut of c.cutList) {
+      const stockIn = parseFloat(cut.stock.match(/(\d+(?:\.\d+)?)\s*ft/)![1]) * 12;
+      expect(cut.lengthIn, `${cut.part} (${cut.stock})`).toBeLessThanOrEqual(stockIn + 0.5);
+    }
   });
 });
 

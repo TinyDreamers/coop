@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { WarningList } from '@/components/WarningList';
 import { BudgetMeter } from '@/components/BudgetMeter';
+import { RoofLayoutPicker } from '@/components/RoofLayoutPicker';
 import { SIDING_OPTIONS, NESTING_BOX_OPTIONS } from '@/lib/constants';
 import type { RoofMaterial } from '@/lib/types';
 import { RotateCcw, Scaling } from 'lucide-react';
@@ -31,6 +32,8 @@ export default function DesignPage() {
   if (!project || !computed) return null;
   const { coop, run, options } = project;
   const { warnings, budget, metrics, geometry } = computed;
+  const roofLayout = coop.roofLayout ?? 'length'; // older saved projects predate this field
+  const isLength = roofLayout === 'length';
 
   function budgetFit() {
     // One-click "get closer to budget": shrink the run and use metal run roof.
@@ -65,6 +68,21 @@ export default function DesignPage() {
         </Card>
       )}
 
+      {/* Roof layout — the ONE continuous roofline, pick how it slopes */}
+      <Card>
+        <CardBody>
+          <SectionTitle
+            title="Roof layout"
+            subtitle={`One continuous roofline · ${metrics.roofPitch} pitch · ridge ${geometry.ridgeHeightFt.toFixed(1)} ft → eave ${geometry.eaveHeightFt.toFixed(1)} ft`}
+          />
+          <RoofLayoutPicker value={roofLayout} onChange={(v) => updateCoop({ roofLayout: v })} />
+          <p className="mt-3 text-xs text-timber-500">
+            Both are a single unbroken plane over the coop and run — no separate roofs, nothing pokes above the
+            roofline. See it update live on the <Link href="/model" className="font-semibold text-blueprint-600">3D model</Link>.
+          </p>
+        </CardBody>
+      </Card>
+
       {/* Flock */}
       <Card>
         <CardBody>
@@ -96,7 +114,7 @@ export default function DesignPage() {
             <DimField label="Width" value={coop.widthFt} onChange={(v) => updateCoop({ widthFt: v })} min={4} max={20} />
             <DimField label="Depth" value={coop.depthFt} onChange={(v) => updateCoop({ depthFt: v })} min={4} max={16} />
             <DimField label="Tall (ridge) wall" value={coop.frontWallHeightFt} onChange={(v) => updateCoop({ frontWallHeightFt: v })} min={6} max={14} step={0.5} />
-            <DerivedField label="Seam wall (on the roof plane)" value={`${geometry.coopSeamWallFt.toFixed(1)} ft`} hint="Set by the single slope where the run meets the coop" />
+            <DerivedField label={isLength ? 'Seam wall (derived)' : 'Low-side wall (derived)'} value={`${geometry.coopSeamWallFt.toFixed(1)} ft`} hint="Sits on the single roof plane — not editable" />
             <Field label="Roof material">
               <Select value={coop.roofMaterial} onChange={(v) => updateCoop({ roofMaterial: v })} options={ROOF_OPTIONS} />
             </Field>
@@ -132,7 +150,7 @@ export default function DesignPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <DimField label="Width" value={run.widthFt} onChange={(v) => updateRun({ widthFt: v })} min={4} max={20} />
             <DimField label="Length" value={run.lengthFt} onChange={(v) => updateRun({ lengthFt: v })} min={6} max={40} />
-            <DerivedField label="Coop-seam wall (on the roof plane)" value={`${geometry.runHighWallFt.toFixed(1)} ft`} hint="Set by the single slope where the run meets the coop" />
+            <DerivedField label={isLength ? 'Coop-seam wall (derived)' : 'High-side wall (derived)'} value={`${geometry.runHighWallFt.toFixed(1)} ft`} hint="Sits on the single roof plane — not editable" />
             <DimField label="Far (low / eave) wall" value={run.wallHeightFt} onChange={(v) => updateRun({ wallHeightFt: v })} min={4} max={9} step={0.5} />
             <Field label="Roof material">
               <Select value={run.roofMaterial} onChange={(v) => updateRun({ roofMaterial: v })} options={ROOF_OPTIONS} />

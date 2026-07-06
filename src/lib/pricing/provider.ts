@@ -102,4 +102,57 @@ export function homeDepotSearchUrl(term: string): string {
   return `https://www.homedepot.com/s/${encodeURIComponent(term)}`;
 }
 
+/**
+ * Direct product-page link for a Home Depot item. Home Depot resolves the bare
+ * `/p/{internetItemId}` short URL to the full product slug, so a numeric SKU /
+ * internet item # deep-links straight to the product. Anything non-numeric (a
+ * model number, store SKU, etc.) can't be a `/p/` id, so we fall back to a
+ * search on that string — which still lands the shopper on the exact product.
+ */
+export function homeDepotProductUrl(sku: string): string {
+  const clean = sku.trim();
+  if (!clean || clean.toLowerCase() === 'n/a') return homeDepotSearchUrl('');
+  return /^\d{6,}$/.test(clean)
+    ? `https://www.homedepot.com/p/${encodeURIComponent(clean)}`
+    : homeDepotSearchUrl(clean);
+}
+
+/**
+ * Try to pull a Home Depot internet item # out of a pasted product URL, e.g.
+ * `https://www.homedepot.com/p/Some-Product-Name/318534512` → `318534512`.
+ * Returns null when the string isn't a recognizable HD product URL.
+ */
+export function extractHomeDepotItemId(url: string): string | null {
+  const m = url.match(/homedepot\.com\/p\/(?:[^/]+\/)*(\d{6,})/i);
+  return m ? m[1] : null;
+}
+
+/**
+ * The best Home Depot link for a material line, in priority order:
+ *   1. an explicit product URL the user locked,
+ *   2. a direct product page derived from a locked SKU,
+ *   3. a text search on the editable search term.
+ * Everything opens in the user's own browser, where they're a cleared shopper —
+ * which is the only reliable way to reach Home Depot (server-side is bot-blocked).
+ */
+export function homeDepotItemUrl(item: {
+  homeDepotUrl?: string;
+  homeDepotSku?: string;
+  searchTerm: string;
+}): string {
+  if (item.homeDepotUrl && /^https?:\/\//i.test(item.homeDepotUrl)) return item.homeDepotUrl;
+  if (item.homeDepotSku && item.homeDepotSku.toLowerCase() !== 'n/a') {
+    return homeDepotProductUrl(item.homeDepotSku);
+  }
+  return homeDepotSearchUrl(item.searchTerm);
+}
+
+/** True when a material line points at a specific locked product (not a search). */
+export function hasLockedProduct(item: { homeDepotUrl?: string; homeDepotSku?: string }): boolean {
+  return Boolean(
+    (item.homeDepotUrl && /^https?:\/\//i.test(item.homeDepotUrl)) ||
+      (item.homeDepotSku && item.homeDepotSku.toLowerCase() !== 'n/a'),
+  );
+}
+
 export const activeProvider: PriceProvider = liveHomeDepotProvider;

@@ -184,8 +184,10 @@ export function computeWarnings(
       severity: 'warning',
       category: 'structure',
       title: 'Roof pitch is below the snow ideal',
-      detail: `A single slope over the full ${fmt(geo.roofTotalRunFt)} ft length is ${metrics.roofPitch}; ${MIN_ROOF_PITCH_RISE_PER_12}:12 is the snow-shedding ideal. It works, but at this pitch use a metal roof and closer purlins to carry the snow load.`,
-      fix: 'Raise the coop (ridge) wall for a steeper slope, or keep a metal roof + tight purlin spacing.',
+      detail: `A single slope over the full ${fmt(geo.roofRunFt)} ft it spans is ${metrics.roofPitch}; ${MIN_ROOF_PITCH_RISE_PER_12}:12 is the snow-shedding ideal. It works, but at this pitch use a metal roof and closer purlins to carry the snow load.`,
+      fix: geo.roofLayout === 'length'
+        ? 'Raise the coop (ridge) wall for a steeper slope, or keep a metal roof + tight purlin spacing.'
+        : 'Widen the gap between the high and low side walls, switch to sloping down the length, or keep a metal roof + tight purlins.',
     });
   } else if (geo.roofPitchPer12 < RECOMMENDED_ROOF_PITCH_RISE_PER_12) {
     w.push({

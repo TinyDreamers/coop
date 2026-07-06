@@ -33,6 +33,7 @@ export const DEFAULT_PROJECT: CoopProject = {
     depthFt: 8,
     frontWallHeightFt: 10, // TALL (ridge) wall — high end of the one continuous roof
     backWallHeightFt: 8.6, // DERIVED at runtime to the seam of the plane; stored value unused
+    roofLayout: 'length', // the one continuous plane slopes down the whole length
     roofStyle: 'shed',
     roofMaterial: 'corrugated-pvc',
     roofOverhangFt: 1,

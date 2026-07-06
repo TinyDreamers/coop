@@ -11,12 +11,14 @@
 
 export type LumberNominal = '2x4' | '2x6' | '2x8' | '4x4pt';
 
-/** Standard stocked lengths (ft) and their cached Concord-NH prices. */
+// Standard stocked lengths (ft) and their cached Concord-NH prices. Refreshed
+// 2026-07-06 from a live Home Depot scrape of the signed-in Concord store
+// (#3485); lengths not returned by that sweep keep their prior estimate.
 const LUMBER_PRICE_TABLE: Record<LumberNominal, Record<number, number>> = {
-  '2x4': { 8: 3.98, 10: 5.48, 12: 7.28, 16: 10.98 },
-  '2x6': { 8: 8.98, 10: 13.97, 12: 16.98, 16: 27.98 },
-  '2x8': { 8: 11.47, 10: 14.98, 12: 18.98, 16: 24.98 },
-  '4x4pt': { 8: 12.98, 12: 22.98, 16: 32.98 },
+  '2x4': { 8: 3.98, 10: 5.67, 12: 6.82, 16: 9.12 },
+  '2x6': { 8: 8.98, 10: 11.28, 12: 13.52, 16: 17.82 },
+  '2x8': { 8: 10.72, 10: 13.42, 12: 16.12, 16: 21.43 },
+  '4x4pt': { 8: 11.28, 12: 22.58, 16: 32.98 },
 };
 
 function nominalLabel(n: LumberNominal): string {
