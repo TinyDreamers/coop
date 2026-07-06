@@ -177,9 +177,9 @@ export default function ModelPage() {
 
 function Info2({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-xs font-semibold uppercase tracking-wide text-timber-500">{label}</div>
-      <div className="font-medium text-timber-900">{value}</div>
+      <div className="break-words font-medium text-timber-900">{value}</div>
     </div>
   );
 }

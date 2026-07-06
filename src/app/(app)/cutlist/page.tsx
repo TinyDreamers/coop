@@ -47,7 +47,7 @@ export default function CutListPage() {
             title="Cut list"
             subtitle={`${num(totalPieces)} finished ${pluralize(totalPieces, 'piece')} across ${phases.length} ${pluralize(phases.length, 'phase')}`}
             right={
-              <div className="flex flex-shrink-0 gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="secondary"
                   onClick={() => exportCutListCsv(computed)}

@@ -45,8 +45,8 @@ export function SectionTitle({
   right?: React.ReactNode;
 }) {
   return (
-    <div className="mb-3 flex items-end justify-between gap-3">
-      <div>
+    <div className="mb-3 flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+      <div className="min-w-0">
         <h2 className="text-lg font-bold text-timber-900">{title}</h2>
         {subtitle && <p className="text-sm text-timber-600">{subtitle}</p>}
       </div>
@@ -195,7 +195,7 @@ export function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex items-center gap-3"
+      className="flex min-h-[44px] items-center gap-3"
       aria-pressed={checked}
     >
       <span
@@ -343,7 +343,7 @@ export function Modal({
       >
         <div className="flex items-center justify-between border-b border-timber-200 p-4">
           <h3 className="text-lg font-bold text-timber-900">{title}</h3>
-          <button className="btn-ghost -mr-2 px-2" onClick={onClose} aria-label="Close">
+          <button className="btn-ghost -mr-2 min-w-[44px] justify-center px-2" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>

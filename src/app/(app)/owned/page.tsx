@@ -59,7 +59,7 @@ export default function OwnedPage() {
             title="Owned materials"
             subtitle={`${owned.length} ${pluralize(owned.length, 'item')} · ${matchedCount} matched to the build`}
             right={
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={() => exportOwnedCsv(project)}>
                   <Download size={15} /> Export CSV
                 </Button>

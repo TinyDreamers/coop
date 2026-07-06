@@ -8,6 +8,7 @@ import type {
 import {
   MAX_UNSUPPORTED_RAFTER_SPAN_FT,
   MIN_ROOF_PITCH_RISE_PER_12,
+  MIN_USABLE_ROOF_PITCH_RISE_PER_12,
   RECOMMENDED_ROOF_PITCH_RISE_PER_12,
   SQFT_PER_BIRD_COOP,
   SQFT_PER_BIRD_RUN,
@@ -163,60 +164,63 @@ export function computeWarnings(
     });
   }
 
-  // ---- STRUCTURE: roof pitch + span ----------------------------------
-  if (geo.coopRoofPitchPer12 < MIN_ROOF_PITCH_RISE_PER_12) {
+  // ---- STRUCTURE: one continuous roof — pitch + span -----------------
+  // A single monopitch roof down the full coop+run length can only reach the
+  // 3:12 snow ideal with a very tall coop, so the severity is graduated: a hard
+  // error only when it is nearly flat (ponds/collapses), a warning below the
+  // snow ideal, an info nudge below the preferred pitch.
+  if (geo.roofPitchPer12 < MIN_USABLE_ROOF_PITCH_RISE_PER_12) {
     w.push({
-      id: 'coop-pitch',
+      id: 'roof-pitch',
       severity: 'error',
       category: 'structure',
-      title: 'Coop roof too shallow for snow',
-      detail: `Coop roof is ${metrics.coopRoofPitch}; NH snow needs ${MIN_ROOF_PITCH_RISE_PER_12}:12 minimum (${RECOMMENDED_ROOF_PITCH_RISE_PER_12}:12 preferred) so snow slides.`,
-      fix: 'Raise the front wall or lower the back wall to steepen the slope.',
+      title: 'Roof is nearly flat',
+      detail: `The continuous roof is ${metrics.roofPitch} — under ${MIN_USABLE_ROOF_PITCH_RISE_PER_12}:12 it ponds water and can collapse under wet NH snow.`,
+      fix: 'Raise the coop (ridge) wall or lower the far run wall to steepen the single slope.',
     });
-  } else if (geo.coopRoofPitchPer12 < RECOMMENDED_ROOF_PITCH_RISE_PER_12) {
+  } else if (geo.roofPitchPer12 < MIN_ROOF_PITCH_RISE_PER_12) {
     w.push({
-      id: 'coop-pitch-soft',
-      severity: 'info',
-      category: 'structure',
-      title: 'Coop roof pitch is minimal',
-      detail: `Coop roof is ${metrics.coopRoofPitch} — sheds snow but ${RECOMMENDED_ROOF_PITCH_RISE_PER_12}:12+ clears wet NH snow better.`,
-    });
-  }
-  if (geo.runRoofPitchPer12 < MIN_ROOF_PITCH_RISE_PER_12) {
-    w.push({
-      id: 'run-pitch',
-      // Same snow-shedding threshold as the coop → same severity. A flat panel
-      // roof over a walk-in run is a real collapse hazard, not a soft nudge.
-      severity: 'error',
-      category: 'structure',
-      title: 'Run roof too shallow for snow',
-      detail: `Run roof is ${metrics.runRoofPitch}; keep it at least ${MIN_ROOF_PITCH_RISE_PER_12}:12 so a heavy snow slides off instead of collapsing panels.`,
-      fix: 'Raise the coop-side (high) wall of the run.',
-    });
-  }
-  // Rafter span / sag: run rafters span half the width (center beam) — check.
-  const runHalfSpan = run.widthFt / 2;
-  if (runHalfSpan > MAX_UNSUPPORTED_RAFTER_SPAN_FT['2x6']) {
-    w.push({
-      id: 'run-span',
+      id: 'roof-pitch-soft',
       severity: 'warning',
       category: 'structure',
-      title: 'Run rafter span may sag',
-      detail: `Even with the center beam, each 2x6 run rafter spans ${fmt(
-        runHalfSpan,
-      )} ft. Over ${MAX_UNSUPPORTED_RAFTER_SPAN_FT['2x6']} ft, 2x6 can sag under snow.`,
-      fix: 'Add a second beam line, tighten rafter spacing to 16", or step up to 2x8 rafters.',
+      title: 'Roof pitch is below the snow ideal',
+      detail: `A single slope over the full ${fmt(geo.roofTotalRunFt)} ft length is ${metrics.roofPitch}; ${MIN_ROOF_PITCH_RISE_PER_12}:12 is the snow-shedding ideal. It works, but at this pitch use a metal roof and closer purlins to carry the snow load.`,
+      fix: 'Raise the coop (ridge) wall for a steeper slope, or keep a metal roof + tight purlin spacing.',
+    });
+  } else if (geo.roofPitchPer12 < RECOMMENDED_ROOF_PITCH_RISE_PER_12) {
+    w.push({
+      id: 'roof-pitch-info',
+      severity: 'info',
+      category: 'structure',
+      title: 'Roof pitch is minimal',
+      detail: `Roof is ${metrics.roofPitch} — sheds snow but ${RECOMMENDED_ROOF_PITCH_RISE_PER_12}:12+ clears wet NH snow better.`,
     });
   }
-  // Coop rafter span (no interior support) across the depth.
-  if (coop.depthFt > MAX_UNSUPPORTED_RAFTER_SPAN_FT['2x6']) {
+  // Headroom at the low (far run) end of the single slope.
+  if (geo.eaveHeightFt < 5) {
+    w.push({
+      id: 'run-headroom',
+      severity: 'warning',
+      category: 'structure',
+      title: 'Far run end is low',
+      detail: `The single slope brings the far run wall to ${fmt(
+        geo.eaveHeightFt,
+      )} ft — you will have to stoop at that end.`,
+      fix: 'Raise the far run wall, or shorten the run so the slope does not drop so far.',
+    });
+  }
+  // Coop rafters span the coop's share of the slope with no interior support,
+  // from the ridge wall to the seam wall.
+  if (geo.coopRoofSlopeLengthFt > MAX_UNSUPPORTED_RAFTER_SPAN_FT['2x6']) {
     w.push({
       id: 'coop-span',
       severity: 'warning',
       category: 'structure',
       title: 'Coop rafter span is long',
-      detail: `Coop shed rafters span ${fmt(coop.depthFt)} ft. 2x6 is rated to ~${MAX_UNSUPPORTED_RAFTER_SPAN_FT['2x6']} ft under snow.`,
-      fix: 'Reduce depth, tighten rafter spacing, or use 2x8 rafters.',
+      detail: `Coop rafters span ${fmt(
+        geo.coopRoofSlopeLengthFt,
+      )} ft from the ridge to the seam wall. 2x6 is rated to ~${MAX_UNSUPPORTED_RAFTER_SPAN_FT['2x6']} ft under snow.`,
+      fix: 'Reduce coop depth, tighten rafter spacing, or use 2x8 rafters.',
     });
   }
 

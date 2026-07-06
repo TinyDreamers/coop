@@ -30,7 +30,7 @@ export default function DesignPage() {
   const { project, computed, updateCoop, updateRun, updateOptions, reset } = useProjectStore();
   if (!project || !computed) return null;
   const { coop, run, options } = project;
-  const { warnings, budget, metrics } = computed;
+  const { warnings, budget, metrics, geometry } = computed;
 
   function budgetFit() {
     // One-click "get closer to budget": shrink the run and use metal run roof.
@@ -91,12 +91,12 @@ export default function DesignPage() {
       {/* Coop dimensions */}
       <Card>
         <CardBody>
-          <SectionTitle title="Coop" subtitle={`${metrics.coopAreaSqft} sq ft · roof ${metrics.coopRoofPitch}`} />
+          <SectionTitle title="Coop" subtitle={`${metrics.coopAreaSqft} sq ft · one continuous roof @ ${metrics.roofPitch}`} />
           <div className="grid gap-4 sm:grid-cols-2">
             <DimField label="Width" value={coop.widthFt} onChange={(v) => updateCoop({ widthFt: v })} min={4} max={20} />
             <DimField label="Depth" value={coop.depthFt} onChange={(v) => updateCoop({ depthFt: v })} min={4} max={16} />
-            <DimField label="Front (tall) wall" value={coop.frontWallHeightFt} onChange={(v) => updateCoop({ frontWallHeightFt: v })} min={5} max={10} step={0.5} />
-            <DimField label="Back (short) wall" value={coop.backWallHeightFt} onChange={(v) => updateCoop({ backWallHeightFt: v })} min={4} max={9} step={0.5} />
+            <DimField label="Tall (ridge) wall" value={coop.frontWallHeightFt} onChange={(v) => updateCoop({ frontWallHeightFt: v })} min={6} max={14} step={0.5} />
+            <DerivedField label="Seam wall (on the roof plane)" value={`${geometry.coopSeamWallFt.toFixed(1)} ft`} hint="Set by the single slope where the run meets the coop" />
             <Field label="Roof material">
               <Select value={coop.roofMaterial} onChange={(v) => updateCoop({ roofMaterial: v })} options={ROOF_OPTIONS} />
             </Field>
@@ -128,12 +128,12 @@ export default function DesignPage() {
       {/* Run */}
       <Card>
         <CardBody>
-          <SectionTitle title="Run" subtitle={`${metrics.runAreaSqft} sq ft · roof ${metrics.runRoofPitch}`} />
+          <SectionTitle title="Run" subtitle={`${metrics.runAreaSqft} sq ft · far (eave) wall ${geometry.eaveHeightFt.toFixed(1)} ft`} />
           <div className="grid gap-4 sm:grid-cols-2">
             <DimField label="Width" value={run.widthFt} onChange={(v) => updateRun({ widthFt: v })} min={4} max={20} />
             <DimField label="Length" value={run.lengthFt} onChange={(v) => updateRun({ lengthFt: v })} min={6} max={40} />
-            <DimField label="High (coop side) wall" value={run.highWallHeightFt} onChange={(v) => updateRun({ highWallHeightFt: v })} min={6} max={11} step={0.5} />
-            <DimField label="Low wall" value={run.wallHeightFt} onChange={(v) => updateRun({ wallHeightFt: v })} min={5} max={9} step={0.5} />
+            <DerivedField label="Coop-seam wall (on the roof plane)" value={`${geometry.runHighWallFt.toFixed(1)} ft`} hint="Set by the single slope where the run meets the coop" />
+            <DimField label="Far (low / eave) wall" value={run.wallHeightFt} onChange={(v) => updateRun({ wallHeightFt: v })} min={4} max={9} step={0.5} />
             <Field label="Roof material">
               <Select value={run.roofMaterial} onChange={(v) => updateRun({ roofMaterial: v })} options={ROOF_OPTIONS} />
             </Field>
@@ -225,6 +225,17 @@ export default function DesignPage() {
         </CardBody>
       </Card>
     </div>
+  );
+}
+
+/** A read-only companion to DimField for a value the single roof plane derives. */
+function DerivedField({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <Field label={label} hint={hint}>
+      <div className="flex h-[42px] items-center rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 text-sm font-semibold text-gray-600">
+        {value}
+      </div>
+    </Field>
   );
 }
 

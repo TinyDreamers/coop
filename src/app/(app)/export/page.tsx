@@ -131,9 +131,9 @@ export default function ExportPage() {
           ) : (
             <ul className="divide-y divide-timber-100">
               {project.exportHistory.map((h) => (
-                <li key={h.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="font-medium text-timber-800">{h.label}</span>
-                  <span className="text-xs text-timber-500">
+                <li key={h.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span className="min-w-0 truncate font-medium text-timber-800">{h.label}</span>
+                  <span className="flex-shrink-0 whitespace-nowrap text-xs text-timber-500">
                     {new Date(h.createdAt).toLocaleString()} · {h.kind.toUpperCase()}
                   </span>
                 </li>

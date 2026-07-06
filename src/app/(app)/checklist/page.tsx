@@ -113,7 +113,7 @@ export default function ChecklistPage() {
           <ProgressBar value={totals.pct} tone={tone} />
 
           {/* Quick stat strip */}
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
             <Stat label="Phases" value={num(phases.length)} />
             <Stat
               label="Steps left"

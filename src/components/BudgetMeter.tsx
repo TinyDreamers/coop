@@ -43,7 +43,7 @@ export function BudgetMeter({ budget, showCategories }: { budget: BudgetSummary;
               const w = budget.materialsSubtotal > 0 ? (c.total / budget.materialsSubtotal) * 100 : 0;
               return (
                 <div key={c.category} className="flex items-center gap-2 text-sm">
-                  <span className="w-40 flex-shrink-0 truncate text-timber-600">{c.label}</span>
+                  <span className="w-24 flex-shrink-0 truncate text-timber-600 sm:w-40">{c.label}</span>
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-timber-100">
                     <div className="h-full rounded-full bg-timber-400" style={{ width: `${w}%` }} />
                   </div>

@@ -35,12 +35,12 @@ export type RoofMaterial = 'corrugated-pvc' | 'corrugated-polycarbonate' | 'corr
 export interface CoopDesign {
   widthFt: number; // along the front wall (default 12)
   depthFt: number; // front-to-back, the roof slope run (default 8)
-  frontWallHeightFt: number; // tall (eave) side, default 8
-  backWallHeightFt: number; // short side, default 6
+  frontWallHeightFt: number; // TALL (ridge) wall — high end of the one continuous roof
+  backWallHeightFt: number; // DERIVED: the coop wall at the run seam sits on the plane; stored value unused
   roofStyle: RoofStyle;
   roofMaterial: RoofMaterial;
   roofOverhangFt: number; // eave/rake overhang, default 1
-  studSpacingIn: number; // 16 or 24
+  studSpacingIn: number; // 16 or 24 — 24 is right for a snow-load-only wall
   joistSpacingIn: number; // 16
   rafterSpacingIn: number; // 16 or 24
   sidingOption: SidingOptionId;
@@ -55,8 +55,8 @@ export interface CoopDesign {
 export interface RunDesign {
   widthFt: number; // default 12 (shared wall side matches coop)
   lengthFt: number; // default 24
-  wallHeightFt: number; // low side, default 6.5
-  highWallHeightFt: number; // high (coop-attached) side, default 9
+  wallHeightFt: number; // FAR (eave) wall — low end of the one continuous roof
+  highWallHeightFt: number; // DERIVED: the run wall at the coop seam sits on the plane; stored value unused
   panelWidthFt: number; // modular panel module, default 4
   roofMaterial: RoofMaterial;
   roofOverhangFt: number;
@@ -428,8 +428,7 @@ export interface DesignMetrics {
   requiredRoostFt: number;
   nestingBoxes: number;
   requiredNestingBoxes: number;
-  coopRoofPitch: string; // "3:12"
-  runRoofPitch: string;
+  roofPitch: string; // "3:12" — one continuous roof, one pitch
   ventLinearFt: number;
   requiredVentSqft: number;
   actualVentSqft: number;

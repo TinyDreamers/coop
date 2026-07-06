@@ -57,17 +57,17 @@ export function computeCutList(project: CoopProject, geo: Geometry): CutListItem
   member({ part: 'Rim / band joist', nominal: '2x8', finishedFt: coop.widthFt, count: 2, phase: 3, materialId: 'lumber.rim-2x8-12' });
 
   // --- Coop walls (phase 5) -------------------------------------------
-  // Studs are bought to the tallest wall; the finished cut is the wall height
-  // less the plates. (Wall heights <= 16 ft never splice.)
-  const studStockFt = Math.max(coop.frontWallHeightFt, coop.backWallHeightFt);
-  const studFrontIn = inches(coop.frontWallHeightFt) - 3;
-  const studBackIn = inches(coop.backWallHeightFt) - 3;
+  // Studs are bought to the tall (ridge) wall; the finished cut is the wall
+  // height less the plates. Spacing is snow-load, not human-grade.
+  const studStockFt = geo.coopTallWallFt;
+  const studTallIn = inches(geo.coopTallWallFt) - 3;
+  const studSeamIn = Math.max(inches(geo.coopSeamWallFt) - 3, 6);
   const frontStuds = Math.ceil((coop.widthFt * 12) / coop.studSpacingIn) + 1;
   const sideStuds = (Math.ceil((coop.depthFt * 12) / coop.studSpacingIn) + 1) * 2;
   const studStock = pickLumber('2x4', studStockFt);
-  add({ part: 'Front (tall) wall stud', stock: studStock.label, lengthIn: studFrontIn, quantity: frontStuds, phase: 5, materialId: 'lumber.stud-2x4-8' });
-  add({ part: 'Back (short) wall stud', stock: studStock.label, lengthIn: studBackIn, quantity: frontStuds, phase: 5, materialId: 'lumber.stud-2x4-8' });
-  add({ part: 'Side wall stud (stepped down the slope)', stock: studStock.label, lengthIn: studFrontIn, quantity: sideStuds, phase: 5, angleNote: 'Top cut to roof pitch; each stud steps shorter toward the back.', materialId: 'lumber.stud-2x4-8' });
+  add({ part: 'Tall (ridge) wall stud', stock: studStock.label, lengthIn: studTallIn, quantity: frontStuds, phase: 5, materialId: 'lumber.stud-2x4-8' });
+  add({ part: 'Seam wall stud (coop/run side)', stock: studStock.label, lengthIn: studSeamIn, quantity: frontStuds, phase: 5, materialId: 'lumber.stud-2x4-8' });
+  add({ part: 'Side wall stud (stepped down the slope)', stock: studStock.label, lengthIn: studTallIn, quantity: sideStuds, phase: 5, angleNote: 'Top cut to roof pitch; each stud steps shorter toward the run seam.', materialId: 'lumber.stud-2x4-8' });
 
   member({ part: 'Wall plate — front/back', nominal: '2x4', finishedFt: coop.widthFt, count: 4, phase: 5, materialId: 'lumber.plate-2x4-12' });
   member({ part: 'Wall plate — sides', nominal: '2x4', finishedFt: coop.depthFt, count: 4, phase: 5, materialId: 'lumber.plate-2x4-12', angleNote: 'Side top plates follow the slope.' });
@@ -115,37 +115,38 @@ export function computeCutList(project: CoopProject, geo: Geometry): CutListItem
     Math.ceil((geo.runWallPerimeterFt - geo.runSharedWallFt - runDoorFt) / run.panelWidthFt),
   );
   // Verticals span the wall height (bought to the tall side); rails span a panel.
-  const runVertStock = pickLumber('2x4', run.highWallHeightFt);
+  const runVertStock = pickLumber('2x4', geo.runHighWallFt);
   add({
     part: 'Run panel vertical',
     stock: runVertStock.label,
     lengthIn: Math.round(geo.runAvgWallHeightFt * 12),
     quantity: runPanels * 2,
     phase: 13,
-    angleNote: 'Tall side full height; short side cut down.',
+    angleNote: 'Coop-seam side full height; far side cut down to the slope.',
     materialId: 'lumber.run-frame-2x4-8',
   });
   member({ part: 'Run panel rail (top/mid/bottom)', nominal: '2x4', finishedFt: run.panelWidthFt, count: runPanels * 3, phase: 13, materialId: 'lumber.run-frame-2x4-8' });
-  member({ part: 'Run corner / sill post', nominal: '4x4pt', finishedFt: run.highWallHeightFt, count: 4, phase: 13, materialId: 'lumber.run-post-4x4-8-pt', angleNote: 'Tall corners full height; short corners cut down.' });
+  member({ part: 'Run corner / sill post', nominal: '4x4pt', finishedFt: geo.runHighWallFt, count: 4, phase: 13, materialId: 'lumber.run-post-4x4-8-pt', angleNote: 'Coop-seam corners full height; far corners cut down.' });
 
-  // --- Run roof (phase 14) --------------------------------------------
-  const runRafterCount = Math.ceil((run.lengthFt * 12) / run.rafterSpacingIn) + 1;
+  // --- Run roof (phase 14) — the run's share of the continuous roof ----
+  const runRafterCount = Math.ceil((geo.roofWidthFt * 12) / run.rafterSpacingIn) + 1;
   member({
-    part: 'Run rafter (over center beam)',
+    part: 'Run rafter (down the slope)',
     nominal: '2x6',
     finishedFt: geo.runRoofSlopeLengthFt,
     count: runRafterCount,
     phase: 14,
     materialId: 'lumber.run-rafter-2x6-16',
-    angleNote: 'Supported mid-span by the center beam; cut ends to pitch.',
+    angleNote: 'Runs down the shared slope; jointed over the cross-beams; cut ends to pitch.',
   });
+  const runBeamLines = Math.max(0, Math.ceil(run.lengthFt / 8) - 1);
   add({
-    part: 'Run center beam (doubled 2x8)',
+    part: 'Run roof cross-beam (doubled 2x8)',
     stock: '2x8 x 12 ft',
-    lengthIn: 144,
-    quantity: Math.ceil(run.lengthFt / 12) * 2,
+    lengthIn: Math.min(144, Math.round(geo.roofWidthFt * 12)),
+    quantity: runBeamLines * Math.ceil(geo.roofWidthFt / 12) * 2,
     phase: 14,
-    angleNote: 'Laminate two boards; stagger any butt joints over a post.',
+    angleNote: 'Laminate two boards; runs across the width; stagger butt joints over a post.',
     materialId: 'lumber.run-beam-2x8-12',
   });
 

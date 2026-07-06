@@ -39,15 +39,15 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Hero */}
       <div className="rounded-2xl bg-gradient-to-br from-timber-800 to-timber-600 p-5 text-white shadow-card sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold">{project.name}</h1>
             <p className="mt-1 max-w-xl text-sm text-timber-100">
               {project.options.chickens} large-breed birds · {metrics.coopAreaSqft} sq ft walk-in coop +{' '}
               {metrics.runAreaSqft} sq ft covered run · {project.settings.storeArea}
             </p>
           </div>
-          <Link href="/design" className="btn bg-white/15 text-white hover:bg-white/25">
+          <Link href="/design" className="btn flex-shrink-0 bg-white/15 text-white hover:bg-white/25">
             <SlidersHorizontal size={16} /> Edit design
           </Link>
         </div>
@@ -81,8 +81,8 @@ export default function DashboardPage() {
         />
         <Stat
           label="Roof pitch"
-          value={metrics.coopRoofPitch}
-          sub="coop shed"
+          value={metrics.roofPitch}
+          sub="one continuous roof"
           tone="default"
         />
       </div>
@@ -158,8 +158,8 @@ export default function DashboardPage() {
           <SectionTitle title="Recommended design" subtitle="Your editable starting point" />
           <div className="grid gap-4 sm:grid-cols-2">
             <RecItem title="Coop" lines={[
-              `${project.coop.widthFt}×${project.coop.depthFt} ft walk-in, ${project.coop.frontWallHeightFt} ft front / ${project.coop.backWallHeightFt} ft back`,
-              `Shed roof (${metrics.coopRoofPitch}), corrugated PVC, no gutters`,
+              `${project.coop.widthFt}×${project.coop.depthFt} ft walk-in, ${project.coop.frontWallHeightFt} ft tall (ridge) wall`,
+              `ONE continuous shed roof (${metrics.roofPitch}) over coop + run, corrugated PVC`,
               `PT skids + deck blocks — movable, no post holes`,
               `Owner-supplied vinyl plank over 3/4" subfloor`,
               `${project.options.nestingBoxCount} outside-access ${project.options.nestingBoxType.replace('-', ' ')} boxes`,
@@ -167,7 +167,7 @@ export default function DashboardPage() {
             ]} />
             <RecItem title="Run & protection" lines={[
               `${project.run.widthFt}×${project.run.lengthFt} ft attached walk-in run`,
-              `Modular bolt-together panels, corrugated roof (${metrics.runRoofPitch})`,
+              `Modular bolt-together panels under the same continuous roof`,
               `1/2" hardware cloth everywhere — not chicken wire`,
               project.options.antiDig === 'apron' ? `${project.options.antiDigApronFt} ft anti-dig apron` : `Anti-dig: ${project.options.antiDig}`,
               `Suspended feeders to deter rats`,

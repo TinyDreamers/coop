@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { NAV_ITEMS } from './nav';
 import { useProjectStore } from '@/lib/store/useProjectStore';
 import { cn, Spinner } from '@/components/ui';
-import { AlertTriangle, Cloud, HardDrive, LogOut, Loader2, Feather } from 'lucide-react';
+import { AlertTriangle, Cloud, HardDrive, LogOut, Loader2, Feather, MoreHorizontal } from 'lucide-react';
 
 /**
  * App frame: desktop sidebar + mobile bottom bar + top status header. Loads the
@@ -85,16 +85,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
         <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-timber-200 bg-white/90 px-4 py-2.5 backdrop-blur">
-          <div className="flex items-center gap-2 lg:hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-timber-800 text-white">
+          <div className="flex min-w-0 items-center gap-2 lg:hidden">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-timber-800 text-white">
               <Feather className="h-4.5 w-4.5" size={18} />
             </div>
-            <span className="font-bold text-timber-900">Coop Planner</span>
+            <span className="truncate font-bold text-timber-900">Coop Planner</span>
           </div>
           <div className="hidden text-sm font-semibold text-timber-700 lg:block">
             {NAV_ITEMS.find((n) => n.href === pathname)?.label ?? 'Coop Planner'}
           </div>
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex flex-shrink-0 items-center gap-3 text-xs">
             {errorCount > 0 && (
               <Link href="/" className="flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 font-semibold text-red-600">
                 <AlertTriangle size={14} /> {errorCount} issue{errorCount > 1 ? 's' : ''}
@@ -132,21 +132,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium',
+                'flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium',
                 active ? 'text-blueprint-700' : 'text-timber-500',
               )}
             >
               <Icon size={20} />
-              {item.short}
+              <span className="w-full truncate text-center">{item.short}</span>
             </Link>
           );
         })}
         <Link
           href="/settings"
-          className={cn('flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium', pathname === '/settings' ? 'text-blueprint-700' : 'text-timber-500')}
+          className={cn('flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium', pathname === '/settings' ? 'text-blueprint-700' : 'text-timber-500')}
         >
-          <span className="text-[20px] leading-none">⋯</span>
-          More
+          <MoreHorizontal size={20} />
+          <span className="w-full truncate text-center">More</span>
         </Link>
       </nav>
     </div>

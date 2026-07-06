@@ -183,7 +183,7 @@ function ShoppingRow({
         aria-pressed={checked}
         aria-label={checked ? `Uncheck ${item.name}` : `Check off ${item.name}`}
         className={cn(
-          'mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border-2 transition-colors',
+          'mt-0.5 flex h-11 w-11 flex-shrink-0 touch-manipulation items-center justify-center rounded-md border-2 transition-colors',
           checked
             ? 'border-moss-600 bg-moss-600 text-white'
             : 'border-timber-300 bg-white text-transparent hover:border-blueprint-500',
@@ -216,7 +216,7 @@ function ShoppingRow({
       {/* Qty + pricing + source */}
       <div className="flex-shrink-0 text-right">
         <div className="font-bold text-timber-900">{money(item.lineTotal)}</div>
-        <div className="text-xs text-timber-500">
+        <div className="whitespace-nowrap text-xs text-timber-500">
           {num(item.qty)} {item.unit} × {money(item.unitPrice)}
         </div>
         <span className={cn('badge mt-1', PRICE_SOURCE_STYLE[item.priceSource])}>

@@ -7,8 +7,10 @@ import type { CoopProject } from '../types';
  *
  * Design intent:
  *  - 8x12 walk-in coop on PT skids + deck blocks (no post holes, movable).
- *  - 3:12 shed roof (front 8 ft / back 6 ft) that sheds NH snow.
+ *  - ONE continuous shed roof: high over the coop's 10 ft tall wall, sloping
+ *    unbroken down the whole length to the far run wall — no separate roofs.
  *  - 12x24 attached walk-in run, fully roofed + 1/2" hardware cloth everywhere.
+ *  - Wall studs at 24" OC — these walls only carry roof + snow load, not people.
  *  - Owner-supplied waterproof vinyl plank floor over a 3/4" subfloor.
  *  - DIY roll-away nesting (cleaner eggs), 6 boxes, outside access.
  *  - Extension-cord power for a heated waterer + future lighting, GFCI required.
@@ -29,12 +31,12 @@ export const DEFAULT_PROJECT: CoopProject = {
   coop: {
     widthFt: 12,
     depthFt: 8,
-    frontWallHeightFt: 8,
-    backWallHeightFt: 6, // 2 ft rise over 8 ft run = 3:12
+    frontWallHeightFt: 10, // TALL (ridge) wall — high end of the one continuous roof
+    backWallHeightFt: 8.6, // DERIVED at runtime to the seam of the plane; stored value unused
     roofStyle: 'shed',
     roofMaterial: 'corrugated-pvc',
     roofOverhangFt: 1,
-    studSpacingIn: 16,
+    studSpacingIn: 24, // snow-load spacing — the coop is not a habitable room
     joistSpacingIn: 16,
     rafterSpacingIn: 24,
     sidingOption: 't1-11',
@@ -47,8 +49,8 @@ export const DEFAULT_PROJECT: CoopProject = {
   run: {
     widthFt: 12,
     lengthFt: 24,
-    wallHeightFt: 6.5, // low side
-    highWallHeightFt: 9.5, // 3 ft rise over 12 ft = 3:12
+    wallHeightFt: 5.5, // FAR (eave) wall — low end of the one continuous roof
+    highWallHeightFt: 9.6, // DERIVED at runtime to the coop seam of the plane; stored value unused
     panelWidthFt: 4,
     roofMaterial: 'corrugated-pvc',
     roofOverhangFt: 1,

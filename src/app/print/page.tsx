@@ -35,9 +35,9 @@ export default function PrintPage() {
   const owned = materials.filter((m) => m.status === 'owned' || m.ownerSupplied);
 
   return (
-    <div className="mx-auto max-w-4xl bg-white p-6 text-slate-800 print:p-0">
+    <div className="mx-auto max-w-4xl bg-white p-4 text-slate-800 sm:p-6 print:p-0">
       {/* Toolbar (hidden on print) */}
-      <div className="no-print mb-6 flex items-center justify-between">
+      <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-2">
         <Link href="/export" className="btn-ghost">
           <ArrowLeft size={16} /> Back
         </Link>
@@ -64,7 +64,7 @@ export default function PrintPage() {
           <KV k="Run / bird" v={`${metrics.runAreaPerBird} sf`} />
           <KV k="Roost" v={`${metrics.roostLinearFt} ft`} />
           <KV k="Nest boxes" v={`${metrics.nestingBoxes}`} />
-          <KV k="Coop roof pitch" v={metrics.coopRoofPitch} />
+          <KV k="Roof pitch (continuous)" v={metrics.roofPitch} />
           <KV k="Estimated total" v={money(budget.total)} />
         </div>
       </Section>
@@ -118,7 +118,7 @@ export default function PrintPage() {
                 <tbody>
                   {items.map((m) => (
                     <tr key={m.id} className="border-b border-slate-100">
-                      <td className="py-0.5">{m.name}</td>
+                      <td className="break-words py-0.5">{m.name}</td>
                       <td className="w-20 py-0.5 text-right text-slate-500">{m.qty} {m.unit}</td>
                       <td className="w-20 py-0.5 text-right font-medium">{money(m.lineTotal)}</td>
                     </tr>
@@ -141,30 +141,32 @@ export default function PrintPage() {
         </Section>
       )}
 
-      {/* Cut list */}
+      {/* Cut list — horizontally scrollable on a phone; full width in print. */}
       <Section title="Cut list" breakBefore>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-timber-800 text-left">
-              <th className="py-1">Ph</th>
-              <th>Part</th>
-              <th>Stock</th>
-              <th>Length</th>
-              <th className="text-right">Qty</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cutList.map((c) => (
-              <tr key={c.id} className="border-b border-slate-100">
-                <td className="py-0.5">{c.phase}</td>
-                <td>{c.part}</td>
-                <td>{c.stock}</td>
-                <td>{inchesToFtIn(c.lengthIn)}</td>
-                <td className="text-right">{c.quantity}</td>
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0 print:mx-0 print:overflow-visible print:px-0">
+          <table className="w-full min-w-[24rem] text-sm">
+            <thead>
+              <tr className="border-b border-timber-800 text-left">
+                <th className="py-1">Ph</th>
+                <th>Part</th>
+                <th>Stock</th>
+                <th>Length</th>
+                <th className="text-right">Qty</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {cutList.map((c) => (
+                <tr key={c.id} className="border-b border-slate-100">
+                  <td className="py-0.5">{c.phase}</td>
+                  <td className="break-words">{c.part}</td>
+                  <td className="break-words">{c.stock}</td>
+                  <td className="whitespace-nowrap">{inchesToFtIn(c.lengthIn)}</td>
+                  <td className="text-right">{c.quantity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Section>
 
       {/* Tools */}

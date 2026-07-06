@@ -73,7 +73,7 @@ export function generatePlanPdf(project: CoopProject, computed: ComputedProject)
       ['Flock', `${project.options.chickens} large birds`, 'Coop', `${project.coop.widthFt}×${project.coop.depthFt} ft (${metrics.coopAreaSqft} sf)`],
       ['Coop / bird', `${metrics.coopAreaPerBird} sf`, 'Run', `${project.run.widthFt}×${project.run.lengthFt} ft (${metrics.runAreaSqft} sf)`],
       ['Run / bird', `${metrics.runAreaPerBird} sf`, 'Roost', `${metrics.roostLinearFt} ft (need ${metrics.requiredRoostFt})`],
-      ['Nest boxes', `${metrics.nestingBoxes} (need ${metrics.requiredNestingBoxes})`, 'Coop roof', metrics.coopRoofPitch],
+      ['Nest boxes', `${metrics.nestingBoxes} (need ${metrics.requiredNestingBoxes})`, 'Roof pitch', metrics.roofPitch],
       ['Budget', money(budget.budget), 'Estimated total', money(budget.total)],
     ],
     margin: { left: MARGIN, right: MARGIN },
@@ -88,7 +88,7 @@ export function generatePlanPdf(project: CoopProject, computed: ComputedProject)
   heading('Design summary');
   paragraph(
     `Walk-in ${project.coop.widthFt}×${project.coop.depthFt} ft coop on pressure-treated skids + deck blocks (movable, no post holes). ` +
-      `${project.coop.frontWallHeightFt} ft front / ${project.coop.backWallHeightFt} ft back shed roof (${metrics.coopRoofPitch}) in ${project.coop.roofMaterial.replace('corrugated-', 'corrugated ')}. ` +
+      `ONE continuous shed roof (${metrics.roofPitch}) runs unbroken from the coop's ${project.coop.frontWallHeightFt} ft tall wall down the whole length to the far run wall, in ${project.coop.roofMaterial.replace('corrugated-', 'corrugated ')}. ` +
       `Owner-supplied waterproof vinyl plank over a 3/4" subfloor. ${project.options.nestingBoxCount} outside-access ${project.options.nestingBoxType.replace('-', ' ')} nesting boxes. ` +
       `${project.coop.hasAutoChickenDoor ? 'Automatic chicken door. ' : ''}` +
       `Attached ${project.run.widthFt}×${project.run.lengthFt} ft covered run with modular bolt-together panels, 1/2" hardware cloth throughout, ` +

@@ -33,9 +33,22 @@ export const MAX_SAFE_GAP_IN = 0.5;
 
 // --- Waste / framing spacing defaults -------------------------------------
 export const DEFAULT_WASTE = 0.1; // 10% overage on consumables
-export const STUD_SPACING_IN = 16;
+// The coop is NOT a habitable room — its walls only carry the roof + snow load
+// down to the sill, so studs are spaced for that load, not human-grade 16" OC.
+export const STUD_SPACING_IN = 24;
 export const JOIST_SPACING_IN = 16;
-export const RAFTER_SPACING_IN = 16;
+export const RAFTER_SPACING_IN = 24;
+
+// Raised coop floor height above grade (ft). The run sits on grade; the coop
+// floor is lifted this much, so the single roof plane meets the coop's walls a
+// foot higher than the run's for the same absolute roof height.
+export const COOP_FLOOR_HEIGHT_FT = 1;
+
+// A single monopitch roof running the full coop+run LENGTH can only reach the
+// 3:12 snow ideal with a very tall coop, so below the snow minimum it is a
+// graduated warning (use metal + tighter purlins) rather than a hard error —
+// until it is nearly flat, which genuinely ponds/collapses.
+export const MIN_USABLE_ROOF_PITCH_RISE_PER_12 = 1.5;
 
 // --- Standard Home Depot material dimensions ------------------------------
 export const SHEET_WIDTH_FT = 4;

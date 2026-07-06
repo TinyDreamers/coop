@@ -273,7 +273,7 @@ function PhotoTile({ photo }: { photo: PhotoMeta }) {
 
       <div className="flex flex-1 flex-col gap-2 p-2">
         <input
-          className="input py-1.5 text-sm"
+          className="input py-1.5 text-base sm:text-sm"
           placeholder="Add a caption…"
           value={photo.caption ?? ''}
           onChange={(e) => updatePhoto(photo.id, { caption: e.target.value })}

@@ -10,7 +10,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  // No maximumScale/userScalable lock — allow pinch-zoom so low-vision users can
+  // magnify small text, SKUs, and the cut list on a phone.
   themeColor: '#734f30',
 };
 

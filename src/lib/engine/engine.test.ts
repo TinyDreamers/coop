@@ -21,12 +21,31 @@ describe('geometry', () => {
     expect(geo.runAreaSqft).toBe(288); // 12 x 24
   });
 
-  it('computes a 3:12 coop roof pitch from the default heights', () => {
+  it('builds ONE continuous roof plane down the whole length', () => {
     const geo = computeGeometry(project());
-    // rise 2 ft over run (depth 8 + overhang 1 = 9) -> 2/9*12 ≈ 2.67? check run uses depth+overhang
-    expect(geo.coopRoofRise).toBe(2);
-    // pitch computed against depth+overhang
-    expect(geo.coopRoofPitchPer12).toBeGreaterThan(2.5);
+    // The slope runs over the full coop depth + run length, not two roofs.
+    expect(geo.roofTotalRunFt).toBe(8 + 24);
+    // A single pitch drives the whole roof; the coop/run aliases equal it.
+    expect(geo.roofPitchPer12).toBeGreaterThan(0);
+    expect(geo.coopRoofPitchPer12).toBe(geo.roofPitchPer12);
+    expect(geo.runRoofPitchPer12).toBe(geo.roofPitchPer12);
+    // The plane is UNBROKEN at the coop/run seam: the derived coop seam wall (on
+    // the 1 ft raised floor) and the run's coop-side wall (on grade) both meet
+    // the same absolute roof height.
+    expect(geo.coopSeamWallFt + 1).toBeCloseTo(geo.junctionRoofHeightFt, 5);
+    expect(geo.runHighWallFt).toBeCloseTo(geo.junctionRoofHeightFt, 5);
+    // High at the coop tall wall, low at the far run wall — monotonically down.
+    expect(geo.ridgeHeightFt).toBeGreaterThan(geo.junctionRoofHeightFt);
+    expect(geo.junctionRoofHeightFt).toBeGreaterThan(geo.eaveHeightFt);
+    // The two section slope lengths add up to the whole slope.
+    expect(geo.coopRoofSlopeLengthFt + geo.runRoofSlopeLengthFt).toBeCloseTo(
+      geo.roofSlopeLengthFt,
+      5,
+    );
+  });
+
+  it('spaces coop studs for snow load (24" OC), not human-grade 16"', () => {
+    expect(project().coop.studSpacingIn).toBe(24);
   });
 });
 
@@ -264,12 +283,12 @@ describe('warnings', () => {
     expect(c.warnings.some((w) => w.id === 'uncovered-run')).toBe(true);
   });
 
-  it('flags a too-shallow coop roof', () => {
+  it('flags a near-flat continuous roof as a hard error', () => {
     const p = project((pp) => {
-      pp.coop.frontWallHeightFt = 6.5; // almost flat
+      pp.coop.frontWallHeightFt = 6.5; // ridge barely above the far eave → near flat
     });
     const c = computeProject(p);
-    expect(c.warnings.some((w) => w.id === 'coop-pitch')).toBe(true);
+    expect(c.warnings.some((w) => w.id === 'roof-pitch' && w.severity === 'error')).toBe(true);
   });
 
   it('flags heated water without GFCI', () => {
