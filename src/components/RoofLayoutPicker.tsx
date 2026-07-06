@@ -50,25 +50,27 @@ function LengthDiagram() {
   );
 }
 
-/** Slope ACROSS THE WIDTH: high along one full-length side, low along the other. */
+/** Slope ACROSS THE WIDTH: high along the back long edge, low along the front. */
 function WidthDiagram() {
   return (
     <svg viewBox="0 0 240 150" className="h-auto w-full" role="img" aria-label="Roof slopes across the width">
       {/* ground */}
       <polygon points="18,128 150,128 214,104 82,104" fill={GROUND} />
-      {/* coop block (left) — even height, walls uniform along the length */}
-      <polygon points="18,128 18,86 82,62 82,104" fill={WALL} stroke={WALL_EDGE} strokeWidth="1.5" />
-      {/* run posts along the front, even height end to end */}
-      {[104, 128, 150].map((zx, i) => (
-        <line key={i} x1={zx} y1={104 - (zx - 82) * 0.375} x2={zx} y2={128 - (zx - 82) * 0.375} stroke={WALL_EDGE} strokeWidth="2" />
+      {/* run posts along the low front eave — even height end to end */}
+      {[92, 116, 140].map((px, i) => (
+        <line key={i} x1={px} y1={92} x2={px} y2={128} stroke={WALL_EDGE} strokeWidth="2" />
       ))}
-      {/* roof plane: high along the BACK long edge (up), low along the FRONT (down) */}
-      <polygon points="10,72 156,72 220,88 74,88" fill={ROOF} stroke={ROOF_EDGE} strokeWidth="1.6" opacity="0.9" />
+      {/* coop left end wall — trapezoid cross-section: low at front, high at back */}
+      <polygon points="18,128 18,92 82,44 82,104" fill={WALL} stroke={WALL_EDGE} strokeWidth="1.5" />
+      {/* coop front wall (faces viewer) for a bit of solidity */}
+      <polygon points="18,128 50,128 50,92 18,92" fill={WALL} stroke={WALL_EDGE} strokeWidth="1.5" opacity="0.85" />
+      {/* one continuous roof plane — high along the BACK edge, low along the FRONT */}
+      <polygon points="12,90 156,90 222,40 78,40" fill={ROOF} stroke={ROOF_EDGE} strokeWidth="1.6" opacity="0.9" />
       {/* downhill arrow across the width (back → front) */}
-      <line x1="150" y1="70" x2="128" y2="86" stroke={ARROW} strokeWidth="2.4" />
-      <polygon points="128,86 133,80 135,88" fill={ARROW} />
-      {/* snow sliding off the long low eave */}
-      <path d="M110,90 l-4,8 M126,92 l-4,8 M142,94 l-4,8" stroke="#9fb6c9" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <line x1="148" y1="56" x2="118" y2="80" stroke={ARROW} strokeWidth="2.4" />
+      <polygon points="118,80 131,76 124,69" fill={ARROW} />
+      {/* snow sliding off the low front eave */}
+      <path d="M102,92 l-5,9 M122,92 l-5,9 M142,92 l-5,9" stroke="#9fb6c9" strokeWidth="2" fill="none" strokeLinecap="round" />
     </svg>
   );
 }
